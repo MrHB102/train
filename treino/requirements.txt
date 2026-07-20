@@ -1,0 +1,13 @@
+# Dependências de treinamento (fine-tuning). Instale com:
+#   python3 -m venv .venv && source .venv/bin/activate
+#   pip install -r treino/requirements.txt
+torch>=2.3
+transformers>=4.49
+datasets>=2.20
+peft>=0.13
+accelerate>=1.0
+bitsandbytes>=0.44     # QLoRA (NF4 + otimizador paginado) — exige GPU NVIDIA/CUDA
+sentencepiece
+protobuf
+# Só para o caminho 20B+ com offload NVMe (treino/finetune_20b_zero3_nvme.py):
+# deepspeed>=0.15      # descomente; exige libaio-dev (sudo apt install libaio-dev)

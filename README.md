@@ -55,20 +55,30 @@ Um "computador antigo" típico de 2015–2019:
 - GPU: 4 GB VRAM (ex.: GTX 1050 Ti, GTX 970, RX 570 4GB)
 - Armazenamento: SSD SATA ou NVMe (HD mecânico inviabiliza os cenários de offload pesado)
 
-## Como começar em 5 minutos
+## Execução de ponta a ponta (arquivos prontos)
 
 ```bash
-# 1. Compile o llama.cpp (CUDA para NVIDIA; Vulkan cobre GPUs antigas/AMD)
-git clone https://github.com/ggml-org/llama.cpp && cd llama.cpp
-cmake -B build -DGGML_CUDA=ON && cmake --build build --config Release -j
+# 1. Instalar o motor (detecta CUDA/Vulkan/CPU automaticamente e compila):
+./run/instalar_llama_cpp.sh
 
-# 2. Baixe um MoE de ~20B quantizado (só ~3,6B parâmetros ativos por token)
-#    ex.: gpt-oss-20b em MXFP4 (~12 GB em disco — ficará quase todo na RAM)
+# 2. Baixar um modelo 20B+ pronto para 4 GB de VRAM (~12 GB de download):
+./run/baixar_modelo.sh gpt-oss          # ou: qwen3-30b | mistral-24b
 
-# 3. Rode mantendo atenção+KV na GPU e experts na RAM (a receita-chave):
-./build/bin/llama-cli -m gpt-oss-20b-mxfp4.gguf \
-  -ngl 99 -ot "ffn_.*_exps=CPU" -fa on -c 8192 --cache-type-k q8_0 --cache-type-v q8_0
+# 3. Executar (atenção+KV na GPU, experts na RAM — a receita-chave):
+./scripts/rodar_moe_20b_4gb.sh modelos/gpt-oss-20b-mxfp4.gguf
+
+# 4. Conversar (em outro terminal; mostra o tok/s real do seu hardware):
+python3 run/chat_cliente.py
 ```
 
-A explicação detalhada de por que exatamente esses flags — e o que esperar de desempenho — está no
+A explicação de cada flag — e o desempenho esperado — está no
 [guia prático](docs/06-guia-pratico.md).
+
+## Treinamento (fine-tuning) com 4 GB de VRAM
+
+Dois caminhos executáveis em [`treino/`](treino/README.md): **(A)** QLoRA que cabe inteiro na GPU
+(modelos ≤4B, `treino/finetune_qlora_gpu4gb.py`) e **(B)** LoRA de 20B+ com DeepSpeed ZeRO-3 e
+offload para RAM/NVMe (`treino/finetune_20b_zero3_nvme.py` + `treino/ds_zero3_nvme.json`) —
+limítrofe porém real: uma noite de treino para 1–2 mil passos. O adaptador resultante (MBs) é
+mesclado no GGUF e servido pelo mesmo pipeline de execução acima. Detalhes e limites honestos no
+[doc 05](docs/05-treinamento-e-finetuning-4gb.md).

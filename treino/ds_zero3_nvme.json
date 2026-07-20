@@ -1,0 +1,43 @@
+{
+  "_comentario": "DeepSpeed ZeRO-3 + offload NVMe (ZeRO-Infinity) para fine-tuning LoRA de 20B+ com 4 GB de VRAM. Os caminhos nvme_path são sobrescritos pelo script via --nvme. Com 64 GB de RAM, troque 'device: nvme' por 'device: cpu' nos dois offloads (muito mais rápido).",
+  "bf16": { "enabled": "auto" },
+  "fp16": { "enabled": "auto" },
+  "zero_optimization": {
+    "stage": 3,
+    "offload_param": {
+      "device": "nvme",
+      "nvme_path": "/tmp/ds_offload",
+      "pin_memory": true,
+      "buffer_count": 5,
+      "buffer_size": 100000000.0
+    },
+    "offload_optimizer": {
+      "device": "nvme",
+      "nvme_path": "/tmp/ds_offload",
+      "pin_memory": true,
+      "buffer_count": 4
+    },
+    "overlap_comm": true,
+    "contiguous_gradients": true,
+    "sub_group_size": 100000000.0,
+    "reduce_bucket_size": "auto",
+    "stage3_prefetch_bucket_size": "auto",
+    "stage3_param_persistence_threshold": "auto",
+    "stage3_max_live_parameters": 300000000.0,
+    "stage3_max_reuse_distance": 300000000.0,
+    "stage3_gather_16bit_weights_on_model_save": false
+  },
+  "aio": {
+    "block_size": 1048576,
+    "queue_depth": 16,
+    "thread_count": 2,
+    "single_submit": false,
+    "overlap_events": true
+  },
+  "gradient_accumulation_steps": "auto",
+  "gradient_clipping": "auto",
+  "train_micro_batch_size_per_gpu": "auto",
+  "train_batch_size": "auto",
+  "steps_per_print": 10,
+  "wall_clock_breakdown": false
+}
