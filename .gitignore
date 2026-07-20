@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.venv/
+modelos/
+llama.cpp/
+lora_saida/
+lora20b_saida/
