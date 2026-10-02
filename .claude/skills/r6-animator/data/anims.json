@@ -1,0 +1,1175 @@
+{
+  "schema": 2,
+  "anims": {
+    "manji.dummy": {
+      "name": "ManjiRaw",
+      "src": "9c3b88f2-manji.rbxm | Dummy/AnimSaves",
+      "fps": 60,
+      "len": 1.8,
+      "loop": false,
+      "prio": 2,
+      "kind": "char",
+      "rig": "r6",
+      "m": {
+        "n_raw": 41,
+        "dur": 1.8,
+        "fps": 60,
+        "trim": [
+          1,
+          1
+        ],
+        "cyclic": false,
+        "hold_pct": 87,
+        "holds": 2,
+        "t0": 0.0667,
+        "max_hold_s": 0.88,
+        "bursts": 1,
+        "burst_ms_med": 133,
+        "peak_dps": 11290,
+        "mean_dps": 990,
+        "punch": 11.4,
+        "rom": {
+          "t": [
+            30,
+            96,
+            40
+          ],
+          "h": [
+            28,
+            67,
+            65
+          ],
+          "la": [
+            48,
+            68,
+            33
+          ],
+          "ra": [
+            246,
+            50,
+            170
+          ],
+          "ll": [
+            76,
+            56,
+            33
+          ],
+          "rl": [
+            116,
+            69,
+            135
+          ]
+        },
+        "travel": 4.46,
+        "bob": 0.29,
+        "spin": 209,
+        "ease_bias": 0.25,
+        "overshoot_pct": 16,
+        "n_key": 28,
+        "ease": {
+          "io": 8,
+          "lin": 19
+        },
+        "key_gap_s": [
+          0.017,
+          0.067,
+          0.15
+        ]
+      },
+      "phases": [
+        [
+          "hold",
+          0.1,
+          0.72,
+          526
+        ],
+        [
+          "snap",
+          0.73,
+          0.87,
+          11290,
+          "ra rl h"
+        ],
+        [
+          "hold",
+          0.88,
+          1.77,
+          426
+        ]
+      ],
+      "flags": [
+        "first key (t=0) is a 169 deg jump from key 2 in 67 ms: looks like a capture/reset pose, excluded from the key poses",
+        "last key (t=1.80s) is a 100 deg jump from the previous key in 17 ms: looks like a capture/reset pose, excluded from the key poses",
+        "poses may put limbs through the torso/head (style choice) (up to 0.85 studs): study timing/spacing/ranges/attitude; never paste or copy poses"
+      ],
+      "auto": "1.80s @60fps, 41 authored keys -> 28 key poses; 87% of the time is held (longest hold 0.88s); 1 snap bursts, median 133 ms, peak 11290 deg/s (punch x11.4 over the mean); torso travels 4.5 studs; biggest movers: ra 246 deg, rl 135 deg, t 96 deg",
+      "tags": [
+        "pose-hit",
+        "snap",
+        "hold",
+        "anticipation",
+        "one-shot",
+        "stylized",
+        "action",
+        "60fps",
+        "hand-keyed"
+      ],
+      "desc": "Dummy rig, 1.8s one-shot. Pure hold-snap-hold: ~0.6s of near-still anticipation (slow drift, 520 deg/s) -> ONE 0.14s snap (ra/rl/head, peak 11k deg/s, x11 the mean energy) -> 0.9s hold of the new pose with slight drift. 87% of the time is held. Torso travels 4.5 studs and accumulates ~210 deg of turn. Right arm swings 246 deg of pitch.",
+      "style": [
+        "Rhythm = long hold -> 8-frame snap -> long hold; the snap carries all the energy, the holds carry the readability.",
+        "Inside the snap the lead joint travels ~16% beyond where the burst ends before coming back (overshoot).",
+        "19 of 28 key poses are linear; only the snap's last keys use InOut to soften the landing.",
+        "First/last raw keys are capture artifacts (169 deg / 100 deg jumps in 1-4 frames): the DB excludes them from `keys` but keeps them in `raw`. Never imitate them."
+      ],
+      "rig_note": "Standard R6 pose tree HumanoidRootPart>Torso>limbs. Raw t=0 and t=1.8s keys are capture resets.",
+      "usage": "reference-only; no executable motion data"
+    },
+    "manji.cam": {
+      "name": "ManjiRaw",
+      "src": "9c3b88f2-manji.rbxm | HumanoidCameraRig/AnimSaves",
+      "fps": 60,
+      "len": 1.8,
+      "loop": false,
+      "prio": 2,
+      "kind": "camera",
+      "rig": "RootPart,Torso",
+      "auto": "camera/prop rig (RootPart,Torso), 36 keys, 1.80s; pose = [x,y,z, pitch,yaw,roll deg (YXZ)]",
+      "tags": [
+        "camera",
+        "paired",
+        "orbit",
+        "dutch-angle",
+        "rig:camera"
+      ],
+      "desc": "Camera rig (RootPart + Torso) authored as a PAIR of manji.dummy: same name 'ManjiRaw', same 1.8s length. Torso pose = [x,y,z, pitch,yaw,roll]: camera sits 4-8 studs in front (z 4.3..7.7), swings yaw +35 -> -27 deg (range -32..+48) while roll flips +11.7 -> -13.7 deg (dutch tilt) and pitch stays within +-12 deg. 36 keys, one every ~4 frames (0.067s median): coarse whip/orbit, not a smooth dolly.",
+      "style": [
+        "Camera is a second KeyframeSequence with the character's length; author both on the same timeline.",
+        "Motion = yaw sweep + roll flip + small pitch drift; roll sign change gives the 'punchy' tilt.",
+        "Keys are sparse (~4 frames) - the camera does not need per-frame keys."
+      ],
+      "rig_note": "Not an R6 character: Torso pose is [x,y,z,pitch,yaw,roll] (YXZ), RootPart stays at zero. Stored in `raw` only.",
+      "usage": "reference-only; no executable motion data"
+    },
+    "manji.yuji_start": {
+      "name": "ManjiStartRaw",
+      "src": "9c3b88f2-manji.rbxm | Yuji/AnimSaves",
+      "fps": 60,
+      "len": 1.0,
+      "loop": false,
+      "prio": 2,
+      "kind": "char",
+      "rig": "r6",
+      "m": {
+        "n_raw": 10,
+        "dur": 1.0,
+        "fps": 60,
+        "trim": [
+          0,
+          0
+        ],
+        "cyclic": false,
+        "hold_pct": 90,
+        "holds": 1,
+        "t0": 0.0,
+        "max_hold_s": 0.9,
+        "bursts": 1,
+        "burst_ms_med": 100,
+        "peak_dps": 6356,
+        "mean_dps": 699,
+        "punch": 9.1,
+        "rom": {
+          "t": [
+            27,
+            76,
+            10
+          ],
+          "h": [
+            5,
+            57,
+            18
+          ],
+          "la": [
+            101,
+            27,
+            68
+          ],
+          "ra": [
+            106,
+            24,
+            69
+          ],
+          "ll": [
+            75,
+            49,
+            51
+          ],
+          "rl": [
+            19,
+            44,
+            9
+          ]
+        },
+        "travel": 1.04,
+        "bob": 0.79,
+        "spin": 121,
+        "ease_bias": 0.5,
+        "overshoot_pct": 0,
+        "n_key": 10,
+        "ease": {
+          "lin": 9
+        },
+        "key_gap_s": [
+          0.033,
+          0.133,
+          0.167
+        ]
+      },
+      "phases": [
+        [
+          "snap",
+          0.0,
+          0.1,
+          6356,
+          "la ra t"
+        ],
+        [
+          "hold",
+          0.1,
+          1.0,
+          236
+        ]
+      ],
+      "flags": [
+        "poses may put limbs through the torso/head (style choice) (0.92 (right arm, rolled ~-68 deg) studs): study timing/spacing/ranges/attitude; never paste or copy poses"
+      ],
+      "auto": "1.00s @60fps, 10 authored keys -> 10 key poses; 90% of the time is held (longest hold 0.90s); 1 snap bursts, median 100 ms, peak 6356 deg/s (punch x9.1 over the mean); biggest movers: ra 106 deg, la 101 deg, t 76 deg",
+      "tags": [
+        "stance",
+        "pose-hit",
+        "intro",
+        "hold",
+        "snap",
+        "one-shot",
+        "60fps",
+        "twist",
+        "counter-rotation"
+      ],
+      "desc": "Yuji rig, 1.0s one-shot stance. Rest -> stance in 0.1s (peak 6.4k deg/s on arms+torso), then 0.9s hold with a slow creep. Torso twisted ~70 deg yaw with the head counter-rotated ~55 deg to keep the gaze forward; both arms raised ~100 deg pitch with different roll; one knee lifted (ll 75 deg) vs the other leg almost straight (rl 19 deg). All 9 transitions are linear.",
+      "style": [
+        "Instant stance snap (6 frames) then a LIVING hold: every hold key moves ~3-4 deg (median over the hold) (e.g. ra pitch 99.8 -> 102.6 -> 105.6 over 0.9s). Never freeze a hold.",
+        "Strong torso twist with opposite head turn keeps readability of the face while the body torques.",
+        "Asymmetry everywhere: one knee up/one down, arms with different rolls.",
+        "Linear keys only; the 'ease' comes from where the keys sit in time."
+      ],
+      "rig_note": "Standard R6. Rest pose key at t=0 (all zeros) is a genuine start pose here, unlike the dummy.",
+      "usage": "reference-only; no executable motion data"
+    },
+    "manji.yuji": {
+      "name": "ManjiRaw",
+      "src": "9c3b88f2-manji.rbxm | Yuji/AnimSaves",
+      "fps": 60,
+      "len": 2.933,
+      "loop": false,
+      "prio": 2,
+      "kind": "char",
+      "rig": "r6",
+      "m": {
+        "n_raw": 59,
+        "dur": 2.933,
+        "fps": 60,
+        "trim": [
+          0,
+          0
+        ],
+        "cyclic": false,
+        "hold_pct": 42,
+        "holds": 3,
+        "t0": 0.0,
+        "max_hold_s": 0.67,
+        "bursts": 4,
+        "burst_ms_med": 216,
+        "peak_dps": 12663,
+        "mean_dps": 2718,
+        "punch": 4.7,
+        "rom": {
+          "t": [
+            129,
+            151,
+            443
+          ],
+          "h": [
+            78,
+            62,
+            61
+          ],
+          "la": [
+            409,
+            109,
+            520
+          ],
+          "ra": [
+            261,
+            137,
+            152
+          ],
+          "ll": [
+            255,
+            87,
+            116
+          ],
+          "rl": [
+            215,
+            66,
+            96
+          ]
+        },
+        "travel": 14.56,
+        "bob": 3.68,
+        "spin": 908,
+        "ease_bias": 0.31,
+        "overshoot_pct": 30,
+        "n_key": 56,
+        "ease": {
+          "lin": 53,
+          "io": 1,
+          "out": 1
+        },
+        "key_gap_s": [
+          0.017,
+          0.033,
+          0.15
+        ]
+      },
+      "phases": [
+        [
+          "snap",
+          0.0,
+          0.17,
+          9698,
+          "la ll t"
+        ],
+        [
+          "hold",
+          0.2,
+          0.57,
+          900
+        ],
+        [
+          "snap",
+          0.68,
+          0.9,
+          12663,
+          "la ll ra"
+        ],
+        [
+          "hold",
+          0.9,
+          1.57,
+          319
+        ],
+        [
+          "snap",
+          1.57,
+          2.13,
+          9555,
+          "la t rl"
+        ],
+        [
+          "snap",
+          2.42,
+          2.58,
+          9315,
+          "la ra ll"
+        ],
+        [
+          "hold",
+          2.62,
+          2.82,
+          795
+        ]
+      ],
+      "flags": [
+        "poses may put limbs through the torso/head (style choice) (up to 1.2 studs): study timing/spacing/ranges/attitude; never paste or copy poses"
+      ],
+      "auto": "2.93s @60fps, 59 authored keys -> 56 key poses; 42% of the time is held (longest hold 0.67s); 4 snap bursts, median 216 ms, peak 12663 deg/s (punch x4.7 over the mean); torso turns 908 deg in total; torso travels 14.6 studs; biggest movers: la 520 deg, t 443 deg, ra 261 deg",
+      "tags": [
+        "acrobatic",
+        "flip",
+        "combo",
+        "travel",
+        "spin",
+        "snap",
+        "hold",
+        "overshoot",
+        "one-shot",
+        "60fps",
+        "hand-keyed",
+        "high-energy"
+      ],
+      "desc": "Yuji rig, 2.93s acrobatic combo. Four ~0.2s snap bursts (peak 12.7k deg/s) separated by holds (0.2-0.67s): snap 0-0.17 | hold | snap 0.68-0.9 | hold 0.9-1.57 | long snap 1.57-2.13 | snap 2.42-2.58 | hold 2.62-2.82. Torso accumulates 908 deg of rotation, root travels 14.6 studs, arms sweep 400-500 deg. 53 of 56 key poses are linear; inside the bursts the lead joint overshoots ~30% beyond the burst's end pose.",
+      "style": [
+        "Combo structure: hit - hold - hit - hold - long tumble - hit - hold; holds (0.2-0.7s) give the eye time to read each pose.",
+        "Extremes far beyond anatomy are accepted (arms 520 deg total range, torso 440 deg roll): exaggeration is the style, so go BIG and keep poses readable at the key frames.",
+        "Dense keys inside tumbles (1-2 frame gaps) so the rotation path is controlled; sparse keys in holds.",
+        "Hold = slow drift, not freeze; end on a held pose of ~0.2s."
+      ],
+      "rig_note": "Standard R6. Root travel and spin are carried by HumanoidRootPart/Torso keys (euler unwrap is already applied in `keys`).",
+      "usage": "reference-only; no executable motion data"
+    },
+    "cat.run": {
+      "name": "CatRun",
+      "src": "f9632e56-StupidCat.rbxm | Ayooo/AnimSaves",
+      "fps": 60,
+      "len": 0.667,
+      "loop": true,
+      "prio": 1,
+      "kind": "char",
+      "rig": "r6+17 ext joints",
+      "m": {
+        "n_raw": 41,
+        "dur": 0.667,
+        "fps": 60,
+        "trim": [
+          0,
+          0
+        ],
+        "cyclic": true,
+        "hold_pct": 0,
+        "holds": 0,
+        "t0": 0.0,
+        "max_hold_s": 0,
+        "bursts": 0,
+        "burst_ms_med": 0,
+        "peak_dps": 1868,
+        "mean_dps": 1587,
+        "punch": 1.2,
+        "rom": {
+          "t": [
+            14,
+            69,
+            49
+          ],
+          "h": [
+            21,
+            48,
+            14
+          ],
+          "la": [
+            20,
+            19,
+            12
+          ],
+          "ra": [
+            19,
+            19,
+            12
+          ],
+          "ll": [
+            150,
+            45,
+            30
+          ],
+          "rl": [
+            150,
+            45,
+            30
+          ]
+        },
+        "travel": 2.32,
+        "bob": 0.43,
+        "spin": 124,
+        "loop_gap": 0.0,
+        "n_key": 29,
+        "ease": {
+          "lin": 25,
+          "io": 3
+        },
+        "key_gap_s": [
+          0.017,
+          0.017,
+          0.033
+        ]
+      },
+      "phases": [],
+      "flags": [],
+      "auto": "0.67s @60fps, 41 authored keys -> 29 key poses; torso travels 2.3 studs; biggest movers: ll 150 deg, rl 150 deg, t 69 deg",
+      "m_ext": {
+        "tail": {
+          "links": 14,
+          "axis": "z",
+          "amp_base": 29.2,
+          "amp_tip": 22.3,
+          "amp_max": 38.9,
+          "lag_frames_per_link": 1,
+          "lag_ms_per_link": 16
+        }
+      },
+      "tags": [
+        "loop",
+        "cycle",
+        "run",
+        "creature",
+        "quadruped",
+        "tail",
+        "follow-through",
+        "baked",
+        "60fps",
+        "movement"
+      ],
+      "desc": "Cat creature rig, 0.67s looping run (Movement priority). Key on every frame (60fps), linear; reduces to 29 key poses. Legs pitch ~150 deg range each, small arm range (20 deg), torso bob 0.43 studs, travels 2.3 studs per loop, loop gap 0.0. Tail = 14 animated links (tip link static) in a side-to-side Z wave: root +-29 deg, peak +-39 deg mid-tail, 22 deg near the tip; each link lags its parent by 1 frame (16 ms). Ears +-19 deg pitch.",
+      "style": [
+        "Loop is closed exactly (first = last pose, loop_gap 0).",
+        "Baked every frame with linear interpolation: smoothness comes from sampling density, not from easing.",
+        "Tail follow-through: every link repeats its parent's swing 1 frame later (16 ms): a travelling wave whose amplitude rises from the root (29 deg) to mid-tail (39 deg) and falls toward the tip (22 deg).",
+        "Run bob is small (0.4 studs): the legs do the work. Ears flap +-19 deg."
+      ],
+      "rig_note": "NOT a pure R6 rig: 17 extra joints (TailRoot, Tail2..Tail15, LEar, REar). R6 joints keep their names; the extras are stored in `ext` as joint-space raw [rx,ry,rz deg, x,y,z] (CFrame.Angles order). Use as a rhythm/timing reference, not for pose-by-pose retargeting to a humanoid.",
+      "usage": "reference-only; no executable motion data"
+    },
+    "cat.idle": {
+      "name": "CatIdle",
+      "src": "f9632e56-StupidCat.rbxm | Ayooo/AnimSaves",
+      "fps": 45,
+      "len": 2.667,
+      "loop": true,
+      "prio": 0,
+      "kind": "char",
+      "rig": "r6+17 ext joints",
+      "m": {
+        "n_raw": 121,
+        "dur": 2.667,
+        "fps": 45,
+        "trim": [
+          0,
+          0
+        ],
+        "cyclic": true,
+        "hold_pct": 0,
+        "holds": 0,
+        "t0": 0.0,
+        "max_hold_s": 0,
+        "bursts": 0,
+        "burst_ms_med": 0,
+        "peak_dps": 134,
+        "mean_dps": 126,
+        "punch": 1.1,
+        "rom": {
+          "t": [
+            18,
+            13,
+            11
+          ],
+          "h": [
+            28,
+            20,
+            22
+          ],
+          "la": [
+            3,
+            16,
+            10
+          ],
+          "ra": [
+            4,
+            16,
+            4
+          ],
+          "ll": [
+            20,
+            13,
+            16
+          ],
+          "rl": [
+            11,
+            5,
+            17
+          ]
+        },
+        "travel": 1.3,
+        "bob": 0.43,
+        "spin": 56,
+        "loop_gap": 0.0,
+        "n_key": 10,
+        "ease": {
+          "lin": 9
+        },
+        "key_gap_s": [
+          0.222,
+          0.289,
+          0.444
+        ]
+      },
+      "phases": [],
+      "flags": [],
+      "auto": "2.67s @45fps, 121 authored keys -> 10 key poses; biggest movers: h 28 deg, ll 20 deg, t 18 deg",
+      "m_ext": {
+        "tail": {
+          "links": 14,
+          "axis": "x",
+          "amp_base": 4.1,
+          "amp_tip": 12.6,
+          "amp_max": 13.4,
+          "lag_frames_per_link": 4,
+          "lag_ms_per_link": 88
+        }
+      },
+      "tags": [
+        "loop",
+        "idle",
+        "creature",
+        "quadruped",
+        "tail",
+        "follow-through",
+        "breathing",
+        "baked",
+        "45fps",
+        "subtle"
+      ],
+      "desc": "Cat creature rig, 2.67s looping idle (Idle priority) at 45 fps, a key on every frame (121 keys -> 10 key poses). Very subtle: peak speed 134 deg/s, head range 28 deg, legs 20, torso 18. Tail wave: 14 links, each lagging 4 frames (88 ms), amplitude GROWING toward the tip (4 deg at the base -> 13 deg at the tip, X axis).",
+      "style": [
+        "Idle = slow, smooth sine-like motion, no holds, no snaps; peak speed ~130 deg/s.",
+        "Tail lag is 4 frames per link (88 ms) at 45 fps; in the run it is 1 frame per link: the slower the motion, the larger the lag.",
+        "Tail amplitude GROWS toward the tip in the idle (4 -> 13 deg), ears move +-17 deg.",
+        "Loop closed exactly."
+      ],
+      "rig_note": "Same creature rig as cat.run (extras in `ext`). Authored at 45 fps.",
+      "usage": "reference-only; no executable motion data"
+    },
+    "wall.wallcombo_juni": {
+      "name": "Juni",
+      "src": "be2bd141-FastWallCombo.rbxm | Wallcombo/Juni/ObjectValue",
+      "fps": 60,
+      "len": 3.45,
+      "loop": false,
+      "prio": 2,
+      "kind": "char",
+      "rig": "r6",
+      "m": {
+        "n_raw": 204,
+        "dur": 3.45,
+        "fps": 60,
+        "trim": [
+          0,
+          0
+        ],
+        "cyclic": false,
+        "hold_pct": 14,
+        "holds": 2,
+        "t0": 0.0,
+        "max_hold_s": 0.25,
+        "bursts": 4,
+        "burst_ms_med": 483,
+        "peak_dps": 11093,
+        "mean_dps": 2774,
+        "punch": 4.0,
+        "rom": {
+          "t": [
+            110,
+            811,
+            136
+          ],
+          "h": [
+            90,
+            129,
+            56
+          ],
+          "la": [
+            219,
+            123,
+            144
+          ],
+          "ra": [
+            285,
+            122,
+            170
+          ],
+          "ll": [
+            136,
+            100,
+            112
+          ],
+          "rl": [
+            200,
+            118,
+            167
+          ]
+        },
+        "travel": 22.0,
+        "bob": 1.63,
+        "spin": 1688,
+        "ease_bias": 0.25,
+        "overshoot_pct": 91,
+        "n_key": 180,
+        "ease": {
+          "lin": 179
+        },
+        "key_gap_s": [
+          0.017,
+          0.017,
+          0.117
+        ]
+      },
+      "phases": [
+        [
+          "snap",
+          0.17,
+          0.38,
+          10533,
+          "ll h ra"
+        ],
+        [
+          "snap",
+          0.48,
+          1.05,
+          11093,
+          "la ra h"
+        ],
+        [
+          "snap",
+          2.03,
+          2.48,
+          7295,
+          "t ra rl"
+        ],
+        [
+          "hold",
+          2.48,
+          2.7,
+          0
+        ],
+        [
+          "snap",
+          2.7,
+          3.18,
+          10604,
+          "la t ra"
+        ],
+        [
+          "hold",
+          3.2,
+          3.45,
+          670
+        ]
+      ],
+      "flags": [],
+      "auto": "3.45s @60fps, 204 authored keys -> 180 key poses; 4 snap bursts, median 483 ms, peak 11093 deg/s (punch x4.0 over the mean); torso turns 1688 deg in total; torso travels 22.0 studs; biggest movers: t 811 deg, ra 285 deg, la 219 deg",
+      "desc": "PAIRED attacker clip (Juni) of a 3.45s wall combo, baked every frame, linear. Blur flurry: torso bent 70-85 deg, torso yaw whipping +-30..90 every 2 frames, arms at pitch 150-180 (horizontal in world because the torso is bent) sliding 0.9-1.4 studs out of the sockets on alternate frames, a 4-frame pattern repeated. Finisher: 200 deg torso wind-up/whip in 12 frames into a straight-arm pose, then a FROZEN hold (10 f) whose only motion is a sideways torso-translation rattle (impact shake). Limbs never stay in their sockets (median 0.4-0.6 studs offset).",
+      "tags": [
+        "paired",
+        "attacker",
+        "combo",
+        "flurry",
+        "barrage",
+        "finisher",
+        "impact-freeze",
+        "shake",
+        "freestyle-joints",
+        "baked",
+        "60fps"
+      ],
+      "usage": "reference-only; no executable motion data"
+    },
+    "wall.wallcombo_victim": {
+      "name": "Victim",
+      "src": "be2bd141-FastWallCombo.rbxm | Wallcombo/Victim/ObjectValue",
+      "fps": 60,
+      "len": 3.45,
+      "loop": false,
+      "prio": 2,
+      "kind": "char",
+      "rig": "r6",
+      "m": {
+        "n_raw": 151,
+        "dur": 3.45,
+        "fps": 60,
+        "trim": [
+          0,
+          0
+        ],
+        "cyclic": false,
+        "hold_pct": 55,
+        "holds": 6,
+        "t0": 0.0,
+        "max_hold_s": 0.7,
+        "bursts": 3,
+        "burst_ms_med": 50,
+        "peak_dps": 10362,
+        "mean_dps": 1351,
+        "punch": 7.7,
+        "rom": {
+          "t": [
+            54,
+            105,
+            71
+          ],
+          "h": [
+            96,
+            71,
+            39
+          ],
+          "la": [
+            140,
+            62,
+            107
+          ],
+          "ra": [
+            131,
+            67,
+            168
+          ],
+          "ll": [
+            59,
+            47,
+            44
+          ],
+          "rl": [
+            89,
+            59,
+            35
+          ]
+        },
+        "travel": 21.53,
+        "bob": 2.28,
+        "spin": 631,
+        "ease_bias": 0.69,
+        "overshoot_pct": 0,
+        "n_key": 98,
+        "ease": {
+          "lin": 97
+        },
+        "key_gap_s": [
+          0.017,
+          0.017,
+          0.717
+        ]
+      },
+      "phases": [
+        [
+          "hold",
+          0.0,
+          0.18,
+          0
+        ],
+        [
+          "hold",
+          0.37,
+          0.5,
+          636
+        ],
+        [
+          "snap",
+          0.52,
+          0.7,
+          3420,
+          "la ra rl"
+        ],
+        [
+          "hold",
+          0.7,
+          0.85,
+          1020
+        ],
+        [
+          "hold",
+          1.9,
+          2.4,
+          663
+        ],
+        [
+          "snap",
+          2.43,
+          2.48,
+          10362,
+          "ra t la"
+        ],
+        [
+          "hold",
+          2.48,
+          2.7,
+          7
+        ],
+        [
+          "snap",
+          2.7,
+          2.75,
+          7616,
+          "h rl ll"
+        ],
+        [
+          "hold",
+          2.75,
+          3.45,
+          0
+        ]
+      ],
+      "flags": [],
+      "auto": "3.45s @60fps, 151 authored keys -> 98 key poses; 55% of the time is held (longest hold 0.70s); 3 snap bursts, median 50 ms, peak 10362 deg/s (punch x7.7 over the mean); torso turns 631 deg in total; torso travels 21.5 studs; biggest movers: ra 168 deg, la 140 deg, t 105 deg",
+      "desc": "PAIRED victim clip of the wall combo (same length, same origin as wall.wallcombo_juni). Waits in rest, flinches into a hunched guard (head 25-48 deg down), then JITTERS between two poses every 6 frames while the flurry lands (torso yaw +-10, head 25/40). On the finisher it snaps in 2-3 frames into a flung pose (arms 130 pitch, rolled out, translated ~1 stud, torso yaw -88, one leg kicked back) and holds frozen with the attacker. 55% held.",
+      "tags": [
+        "paired",
+        "victim",
+        "reaction",
+        "jitter",
+        "knockback",
+        "impact-freeze",
+        "freestyle-joints",
+        "60fps"
+      ],
+      "usage": "reference-only; no executable motion data"
+    },
+    "onex.non_x_one_emote_keyframesequence": {
+      "name": "KeyframeSequence",
+      "src": "3fce0d69-oneXone.rbxm | non X one Emote/AnimSaves",
+      "fps": 60,
+      "len": 6.117,
+      "loop": true,
+      "prio": 2,
+      "kind": "char",
+      "rig": "r6",
+      "m": {
+        "n_raw": 110,
+        "dur": 6.117,
+        "fps": 60,
+        "trim": [
+          0,
+          0
+        ],
+        "cyclic": false,
+        "hold_pct": 17,
+        "holds": 8,
+        "t0": 0.0,
+        "max_hold_s": 0.15,
+        "bursts": 16,
+        "burst_ms_med": 50,
+        "peak_dps": 15299,
+        "mean_dps": 1923,
+        "punch": 8.0,
+        "rom": {
+          "t": [
+            58,
+            197,
+            28
+          ],
+          "h": [
+            74,
+            89,
+            22
+          ],
+          "la": [
+            210,
+            67,
+            109
+          ],
+          "ra": [
+            475,
+            118,
+            146
+          ],
+          "ll": [
+            107,
+            120,
+            79
+          ],
+          "rl": [
+            99,
+            81,
+            72
+          ]
+        },
+        "travel": 25.43,
+        "bob": 0.97,
+        "spin": 1673,
+        "ease_bias": 0.67,
+        "overshoot_pct": 0,
+        "loop_gap": 0.0,
+        "n_key": 108,
+        "ease": {
+          "lin": 105,
+          "in": 2
+        },
+        "key_gap_s": [
+          0.033,
+          0.067,
+          0.167
+        ]
+      },
+      "phases": [
+        [
+          "hold",
+          0.43,
+          0.55,
+          157
+        ],
+        [
+          "hold",
+          0.77,
+          0.92,
+          162
+        ],
+        [
+          "hold",
+          0.97,
+          1.08,
+          105
+        ],
+        [
+          "snap",
+          1.08,
+          1.13,
+          4741,
+          "la ll ra"
+        ],
+        [
+          "hold",
+          1.13,
+          1.28,
+          208
+        ],
+        [
+          "snap",
+          1.32,
+          1.37,
+          4718,
+          "ll t rl"
+        ],
+        [
+          "hold",
+          2.0,
+          2.12,
+          399
+        ],
+        [
+          "hold",
+          2.97,
+          3.08,
+          499
+        ],
+        [
+          "snap",
+          3.18,
+          3.23,
+          10802,
+          "la ll h"
+        ],
+        [
+          "snap",
+          3.48,
+          3.57,
+          15299,
+          "ra la rl"
+        ],
+        [
+          "snap",
+          3.68,
+          3.7,
+          4602,
+          "la rl t"
+        ],
+        [
+          "snap",
+          3.88,
+          3.93,
+          8262,
+          "la ra h"
+        ],
+        [
+          "snap",
+          3.98,
+          4.03,
+          5706,
+          "rl la t"
+        ],
+        [
+          "snap",
+          4.18,
+          4.23,
+          8630,
+          "ra la rl"
+        ],
+        [
+          "snap",
+          4.38,
+          4.43,
+          5138,
+          "rl h ra"
+        ],
+        [
+          "snap",
+          4.55,
+          4.6,
+          7298,
+          "rl ll ra"
+        ],
+        [
+          "hold",
+          4.6,
+          4.75,
+          191
+        ],
+        [
+          "snap",
+          4.78,
+          4.83,
+          6003,
+          "la ra t"
+        ],
+        [
+          "snap",
+          5.28,
+          5.33,
+          5633,
+          "rl t h"
+        ],
+        [
+          "snap",
+          5.38,
+          5.43,
+          5966,
+          "t rl ll"
+        ],
+        [
+          "snap",
+          5.48,
+          5.53,
+          5930,
+          "ll t ra"
+        ],
+        [
+          "snap",
+          5.68,
+          5.8,
+          7244,
+          "t ra la"
+        ],
+        [
+          "hold",
+          5.93,
+          6.08,
+          187
+        ],
+        [
+          "snap",
+          6.08,
+          6.12,
+          14024,
+          "t ra la"
+        ]
+      ],
+      "flags": [],
+      "auto": "6.12s @60fps, 110 authored keys -> 108 key poses; 16 snap bursts, median 50 ms, peak 15299 deg/s (punch x8.0 over the mean); torso turns 1673 deg in total; torso travels 25.4 studs; biggest movers: ra 475 deg, la 210 deg, t 197 deg",
+      "desc": "6.1s looping 1x1 dance/fight emote animated ON TWOS/FOURS with CONSTANT (step) easing: keys every 2-4 frames, no interpolation - the anime 'limited animation' feel. 16 one-key snaps, arms swing the full +-165 deg, limbs offset 0.3-1.2 studs from the sockets, torso yaw +-85..110.",
+      "tags": [
+        "loop",
+        "emote",
+        "stepped",
+        "on-twos",
+        "constant-easing",
+        "freestyle-joints",
+        "snap",
+        "60fps"
+      ],
+      "usage": "reference-only; no executable motion data"
+    }
+  },
+  "policy": "inspiration-only"
+}

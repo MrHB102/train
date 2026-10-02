@@ -1,0 +1,67 @@
+{
+  "basis": "9 reference summaries, including one camera and two creature cycles. Historical R6 action style; conditional inspiration, not a universal quality standard.",
+  "rules": {
+    "TIMING": [
+      "Author on a 60 fps grid (30 fps ok for quick drafts). A snap burst lasts 6-13 frames (0.1-0.22s) with keys 1-4 frames apart; holds last 0.2-0.9s.",
+      "Hold -> snap -> hold. 42-90% of a hit animation is held; one burst carries ~5-11x the mean energy (peak 6-13k deg/s).",
+      "Anticipation: ~0.35-0.7s of near-still drift before the main snap (dummy: 0.6s).",
+      "Holds are alive: the lead joints creep ~3-6 deg between hold keys (measured medians 3-6). A frozen hold (identical keys) reads dead.",
+      "Within a snap the lead joint overshoots its burst end pose by ~15-30% (measured avg) before returning.",
+      "Finish a one-shot on a 0.2s+ held pose. Loops: first pose == last pose (loop_gap 0)."
+    ],
+    "EASING": [
+      "Default LINEAR. The snap comes from key spacing and large deltas, not from curves (53/56 and 19/28 key poses are linear).",
+      "InOut only to soften a landing (~30% of the keys in the dummy hit). Out for settles. Never Elastic/Bounce.",
+      "Cycles are baked/dense (every frame at 60 fps or 45 fps) + linear: smoothness = sampling density."
+    ],
+    "POSES": [
+      "Exaggerate: arm ROM 250-520 deg total, torso spin up to 900 deg per 3s, root travel 4-15 studs. Stay readable on key frames.",
+      "Torque: twist the torso ~70 deg and counter-rotate the head ~55 deg to keep the face to camera.",
+      "Asymmetry: left/right limbs do not mirror in a stance (one knee up ~75 deg, the other ~20 deg; arms with different roll).",
+      "Dense keys (1-2 frames) inside tumbles/spins to control the rotation path; sparse keys in holds."
+    ],
+    "FOLLOW-THROUGH": [
+      "Chains (tail, cloth, hair) = parent motion delayed per link: 1 frame/link at 60 fps in a fast run, 4 frames/link at 45 fps in a slow idle.",
+      "Run tail: amplitude rises from the root (29 deg) to mid-tail (39 deg) and falls to 22 deg near the tip. Idle tail: grows root->tip (4 -> 13 deg).",
+      "Ears: +-17-20 deg pitch, in phase with the body bob."
+    ],
+    "CAMERA": [
+      "Camera = second KeyframeSequence of the SAME length as the character animation (RootPart + Torso, pose [x,y,z,pitch,yaw,roll]).",
+      "Sweep yaw ~60-80 deg, flip roll +-12 deg (dutch), pitch within +-12 deg, distance 4-8 studs; keys every ~4 frames.",
+      "Time the camera whip with the character's main snap."
+    ],
+    "ANTI-PATTERNS": [
+      "Do not copy capture artifacts (first/last key far from its neighbour within 1-4 frames).",
+      "Do not use a key on every frame for hand-keyed hits: that is for baked cycles only.",
+      "Do not ease every key; do not mirror both sides in a stance; do not freeze holds; keep overshoot <= ~1.3x."
+    ],
+    "READABILITY": [
+      "Evaluate silhouette, physical contact, weight, arc and rhythm with images AND normal-speed playback.",
+      "Translations outside joint sockets are optional for explicit stylization; prefer stable anatomical placement for realistic work."
+    ],
+    "ORIGINALITY": [
+      "Author every animation from the current brief. Do not import, reconstruct, retarget or lightly alter a database animation or packaged example.",
+      "Extract principles (contrast, overlap, weight, rhythm), then design new beats and poses. Matching a metric does not establish originality."
+    ],
+    "QUALITY BAR": [
+      "Target = the energy of manji.yuji_start / manji.yuji, delivered as FULL ANIMATIONS, not as single poses: a one-shot is 3-6 beats (anticipation, snap into the stance/hit, follow-through, new stance, settle) with transitions you author between them.",
+      "Pose character at that level: aggressive, torqued stance - torso twist 50-75 deg with the head counter-turned ~40-55 deg, asymmetric limbs (one knee up 60-80 / other 15-25; arms with different pitch ~60-120 and different roll), hips low and offset, weight clearly on one leg.",
+      "Motion character at that level: snap of 6-13 frames at 60 fps with the lead joint overshooting 15-30 %, then a LIVING hold (3-6 deg creep per key) of 0.2-0.9 s; between beats the body keeps flowing (staggered 1-3 frame offsets), it never parks.",
+      "Calibrate by numbers: `db.py show ID` gives hold %, snap frames, overshoot, ROM. Match the numbers and the attitude, change every pose.",
+      "A stiff result (pose, hold, pose, hold with identical timing and all bones on the same frame) fails the bar even if the poses are good."
+    ],
+    "FIGHT": [
+      "Two-rig fights: pose-to-pose like the reference clips. Hold alive (2-4 deg) -> 10% anticipation -> 3-9 frame linear snap -> 24% overshoot (victim 32% + head whip) -> settle at +5. No spring/noise layer on top.",
+      "Every impact: hit-stop 2-8 frames, the striking tip TOUCHES its target on the impact frame, victim reaction overshoot, camera shake + lens punch-in.",
+      "Guards low and loose (arm pitch 20-45); arms rise only to strike/block. Strikes: load (chamber) -> 3-4 f snap -> overshoot -> recoil to guard.",
+      "Ground travel >= 10 frames gets real steps from a walk/run sheet (contact / passing), narrow stance, knees shown with leg yaw/roll.",
+      "Knockdowns: fall on the back, bounce, slide, legs over the head, kip-up. Never rotate the whole body like a box; never key pitch back to 0 after a -360 flip.",
+      "Non-stop brief: the decisive exchange lands at ~90% of the length; keep the aftermath short."
+    ],
+    "FREESTYLE JOINTS": [
+      "Optional R6 stylization: use joint translations only when they improve the intended silhouette. Never force them on every pose.",
+      "Check shoulders, feet and contact in multiple views. Deliberate smears are brief and justified; persistent penetrations are defects."
+    ]
+  },
+  "application": "Use only when this style fits the brief. Prefer observed user-video evidence. Choose new choreography, poses, timing and camera."
+}

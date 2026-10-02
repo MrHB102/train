@@ -1,0 +1,4 @@
+interface:
+  display_name: "Blender Original Animator"
+  short_description: "Animação autoral com análise de vídeo e revisão visual"
+  default_prompt: "Use $r6-animator para criar uma animação original no Blender e analisar meu vídeo como referência de estilo."

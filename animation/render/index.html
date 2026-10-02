@@ -1,0 +1,19 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>R6 fight renderer</title>
+<style>html,body{margin:0;background:#000;overflow:hidden}canvas{display:block}</style>
+<script type="importmap">
+{"imports":{"three":"/node_modules/three/build/three.module.js","three/addons/":"/node_modules/three/examples/jsm/"}}
+</script>
+</head><body>
+<script type="module">
+import { Stage } from '/scene.js';
+window.__ready = false;
+window.initStage = async (shotUrl, opts) => {
+  const shot = await (await fetch(shotUrl)).json();
+  window.stage = new Stage(shot, opts || {});
+  window.__ready = true;
+  return { frames: shot.frames, w: window.stage.W, h: window.stage.H };
+};
+window.renderFrame = (i, pass) => window.stage.render(i, pass || 'color');
+</script>
+</body></html>

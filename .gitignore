@@ -1,7 +1,10 @@
+node_modules/
 __pycache__/
 *.pyc
-.venv/
-modelos/
-llama.cpp/
-lora_saida/
-lora20b_saida/
+animation/out/frames/
+animation/out/review/
+animation/out/test/
+animation/out/shot.json
+animation/out/fx2d.json
+animation/out/tmp/
+animation/out/audio/*.wav
