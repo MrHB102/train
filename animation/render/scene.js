@@ -121,7 +121,7 @@ function skyMaterial(sunDir) {
       void main(){
         vec3 d = normalize(vDir);
         float h = clamp(d.y, -0.3, 1.0);
-        vec3 zenith = vec3(0.10,0.30,0.74), mid = vec3(0.34,0.62,0.93), horizon = vec3(0.80,0.90,0.98);
+        vec3 zenith = vec3(0.07,0.24,0.66), mid = vec3(0.24,0.52,0.90), horizon = vec3(0.62,0.78,0.95);
         vec3 col = mix(horizon, mid, smoothstep(0.0, 0.28, h)); col = mix(col, zenith, smoothstep(0.25, 0.95, h));
         vec2 uv = d.xz / (d.y + 0.32) * 1.4;
         float n = fbm(uv * 1.15 + vec2(3.1, 1.7)); float c = smoothstep(0.50, 0.82, n) * smoothstep(0.02, 0.22, d.y);
@@ -191,7 +191,7 @@ export class Stage {
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(60, this.W / this.H, 0.1, 2000);
     this.sunDir = new THREE.Vector3(-0.45, 0.62, -0.65).normalize();
-    this.horizon = new THREE.Color(0.80, 0.90, 0.98);
+    this.horizon = new THREE.Color(0.62, 0.78, 0.95);
     this.scene.fog = new THREE.FogExp2(this.horizon.clone().multiplyScalar(0.86), 0.0075);
     this.buildEnvironment(); this.buildLights();
     this.chars = {};
@@ -328,7 +328,7 @@ export class Stage {
     const d = this.shot.chars[e.c];
     (e.lags || [2, 4, 6]).forEach((lag, i) => {
       const ff = Math.max(0, f - lag); const g = this.ghostPool.get(); g.userData.mat.color.set(e.col || '#9fd0ff');
-      g.userData.mat.opacity = (e.a ?? 0.5) * Math.pow(e.decay ?? 0.7, i) * (1 - (e.fade ? u * 0.6 : 0));
+      g.userData.mat.opacity = 0.72 * (e.a ?? 0.5) * Math.pow(e.decay ?? 0.7, i) * (1 - (e.fade ? u * 0.6 : 0));
       this.setPartMatrices(g.userData.parts, d, ff);
       for (const b of PARTS) { const m = g.userData.parts[b]; const sz = SIZE[b]; m.matrix.scale(new THREE.Vector3(sz[0], sz[1], sz[2])); }
     });

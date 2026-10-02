@@ -48,7 +48,7 @@ class FX:
         if s >= 3 or flash:
             self.e2(t='flash', f0=f, f1=f, kind=flash or ('impact' if s >= 4 else 'white'), a=1.0 if s >= 4 else 0.5)
         if s >= 3:
-            self.e2(t='rblur', f0=f, f1=f + 2, p=list(p), amt=0.03 * s)
+            self.e2(t='rblur', f0=f, f1=f + 2, p=list(p), amt=0.012 * s)
         if ground:
             self.crack(f, (p[0], 0, p[2]), s=1.2 + s * 0.9, seed=self._s())
         if sfx:

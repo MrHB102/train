@@ -8,3 +8,5 @@ animation/out/shot.json
 animation/out/fx2d.json
 animation/out/tmp/
 animation/out/audio/*.wav
+animation/out/frames_post/
+animation/out/render.log

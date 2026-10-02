@@ -85,15 +85,15 @@ def hands_and_target(f):
 # ================================================================ f0-76
 def direct_opening():
     # S1: extreme close-up on the face; the head snaps up to stare into the lens
-    CAM.auto(0, 10, lambda f: [P.rig.head(f)], keys=[
-        dict(f=0, az=150, el=-10, fill=0.95, fov=34, roll=-5, e='out', mind=1.4, shift=(0.0, 0.0)),
-        dict(f=9, az=165, el=-6, fill=1.0, fov=28, roll=-2, mind=1.2)], line=line, follow=0.7, name='cu-face')
+    CAM.auto(0, 10, lambda f: body(P, f), keys=[
+        dict(f=0, az=148, el=-14, fill=0.82, fov=56, roll=-5, e='out', mind=7),
+        dict(f=9, az=160, el=-8, fill=0.86, fov=42, roll=-2, mind=6)], line=line, follow=0.7, name='intro-hero')
     FXL.sparkle(7, 11, P.rig.point(8, 'h', (0.28, 0.06, -0.62)), r=0.55)
     # S2: over-the-shoulder wide; slow push-in while the player coils
     CAM.auto(10, 30, both, keys=[
-        dict(f=10, az=-14, el=7, fill=0.92, fov=66, roll=2, e='io', mind=4),
-        dict(f=22, az=-9, el=5, fill=0.86, fov=58, roll=0, e='in', mind=3),
-        dict(f=29, az=-5, el=3, fill=0.72, fov=46, roll=-3, shift=(0.0, 0.0))], line=line, follow=0.6, name='ots-wide')
+        dict(f=10, az=-38, el=9, fill=0.9, fov=66, roll=2, e='io', mind=6),
+        dict(f=22, az=-30, el=6, fill=0.84, fov=58, roll=0, e='in', mind=5),
+        dict(f=29, az=-22, el=4, fill=0.72, fov=48, roll=-3, shift=(0.0, 0.0))], line=line, follow=0.6, name='ots-wide')
     tag(12, 31)
     FXL.dust_burst(26, P.rig.sole(26, 'r'), s=0.6, n=5, dur=6)
 
@@ -113,13 +113,13 @@ def direct_dash_strike():
     imp = lambda f: ([P.rig.fist(36, 'r'), D.rig.chest(36), P.rig.head(36), D.rig.head(36)] if f < 39 else
                      [D.rig.head(f), D.rig.sole(f, 'l'), D.rig.sole(f, 'r'), P.rig.head(39)] if f < 42 else body(D, f))
     CAM.auto(35, 45, imp, keys=[
-        dict(f=35, az=62, el=-12, fill=0.74, fov=40, roll=3, e='out', mind=3),
-        dict(f=38, az=70, el=-6, fill=0.7, fov=44, roll=2, e='io', mind=3),
-        dict(f=44, az=96, el=2, fill=0.55, fov=54, roll=-2, mind=4)], line=line_fixed(36), follow=0.55, name='impact-cu')
+        dict(f=35, az=62, el=-12, fill=0.84, fov=40, roll=3, e='out', mind=3, cu=True),
+        dict(f=38, az=70, el=-6, fill=0.8, fov=44, roll=2, e='io', mind=3, cu=True),
+        dict(f=44, az=96, el=2, fill=0.7, fov=54, roll=-2, mind=4, cu=True)], line=line_fixed(36), follow=0.55, name='impact-cu')
     hit(C.IMPACT1, P, 'ra', (0, -1.0, 0), s=3, kind='hit', debris=14)
     FXL.trail('P', 'ra', (0, -1.0, 0), 34, 36, col='#ffffff', w=0.24, k=2)
     hurt(36, 47)
-    FXL.e3(t='ghost', c='D', f0=38, f1=45, lags=[2, 4], col='#ffe9b0', a=0.38, decay=0.6, fade=True)
+    FXL.e3(t='ghost', c='D', f0=38, f1=45, lags=[2, 4], col='#ffe9b0', a=0.26, decay=0.6, fade=True)
     FXL.e2(t='lines', f0=38, f1=45, mode='parallel', ang=None, n=22, a=0.7, col='#ffffff', who='D')
     FXL.e2(t='mblur', f0=39, f1=45, who='D', len=10)
 
@@ -144,13 +144,13 @@ def direct_crash():
 def direct_combo():
     # five hits, five different cameras: a hard cut on (almost) every strike
     lf = line_fixed(60)
-    pair = lambda f: [P.rig.head(f), D.rig.head(f), P.rig.fist(f, 'r'), P.rig.fist(f, 'l'), D.rig.torso(f), P.rig.torso(f)]
-    CAM.auto(55, 59, pair, keys=[dict(f=55, az=92, el=2, fill=0.9, fov=42, roll=-2, e='out', mind=3), dict(f=58, az=90, el=2, fill=0.92, fov=36, roll=-3, mind=3)], line=lf, follow=0.8, name='combo-1')
-    CAM.auto(59, 63, pair, keys=[dict(f=59, az=128, el=-9, fill=0.88, fov=46, roll=5, e='out', mind=3), dict(f=62, az=122, el=-7, fill=0.9, fov=41, roll=6, mind=3)], line=lf, follow=0.8, name='combo-2')
-    CAM.auto(63, 67, pair, keys=[dict(f=63, az=-58, el=6, fill=0.88, fov=44, roll=-5, e='out', mind=3), dict(f=66, az=-52, el=5, fill=0.9, fov=39, roll=-6, mind=3)], line=lf, follow=0.8, name='combo-3')
-    CAM.auto(67, 71, lambda f: both(f), keys=[dict(f=67, az=96, el=-14, fill=0.82, fov=54, roll=2, e='out', mind=3), dict(f=70, az=92, el=-12, fill=0.84, fov=48, roll=3, mind=3)], line=lf, follow=0.8, name='combo-4')
+    pair = lambda f: [P.rig.head(f), D.rig.head(f), P.rig.sole(f, 'r'), D.rig.sole(f, 'r'), P.rig.fist(f, 'r'), P.rig.fist(f, 'l')]
+    CAM.auto(55, 59, pair, keys=[dict(f=55, az=92, el=2, fill=0.9, fov=46, roll=-2, e='out', mind=7), dict(f=58, az=90, el=2, fill=0.92, fov=40, roll=-3, mind=7)], line=lf, follow=0.8, name='combo-1')
+    CAM.auto(59, 63, pair, keys=[dict(f=59, az=128, el=-9, fill=0.9, fov=48, roll=5, e='out', mind=7), dict(f=62, az=122, el=-7, fill=0.92, fov=44, roll=6, mind=7)], line=lf, follow=0.8, name='combo-2')
+    CAM.auto(63, 67, pair, keys=[dict(f=63, az=-58, el=6, fill=0.9, fov=48, roll=-5, e='out', mind=7), dict(f=66, az=-52, el=5, fill=0.92, fov=42, roll=-6, mind=7)], line=lf, follow=0.8, name='combo-3')
+    CAM.auto(67, 71, lambda f: both(f), keys=[dict(f=67, az=96, el=-14, fill=0.86, fov=54, roll=2, e='out', mind=7), dict(f=70, az=92, el=-12, fill=0.88, fov=48, roll=3, mind=7)], line=lf, follow=0.8, name='combo-4')
     CAM.auto(71, 79, lambda f: [P.rig.head(f), D.rig.head(f), D.rig.sole(f, 'l'), P.rig.sole(f, 'r')], keys=[
-        dict(f=71, az=40, el=-18, fill=0.8, fov=46, roll=-4, e='out', mind=3), dict(f=78, az=70, el=-24, fill=0.7, fov=58, roll=-6, mind=3)], line=lf, follow=0.6, name='combo-5-launch')
+        dict(f=71, az=40, el=-18, fill=0.8, fov=50, roll=-4, e='out', mind=7), dict(f=78, az=70, el=-24, fill=0.7, fov=58, roll=-6, mind=8)], line=lf, follow=0.6, name='combo-5-launch')
     hit(56, P, 'la', (0, -1.0, 0), 1)
     hit(59, P, 'ra', (0, -1.0, 0), 2)
     hit(64, P, 'la', (0, -1.0, 0), 2)

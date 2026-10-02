@@ -45,12 +45,15 @@ class AutoShot:
     180 = behind D), elevation, how much of the frame the subject should fill, lens and roll. Distance is computed so the
     subject points always fit, so the shot stays valid while the characters fly around."""
 
+    FILL_SCALE = 0.84      # global: keep the subject a little smaller in frame so portrait compositions read
+    MIN_DIST = 6.0         # global: never closer than this unless the key is flagged cu=True (deliberate close-up)
+
     def __init__(self, f0, f1, subject, keys, line, follow=1.0, name='', aspect=9 / 16):
         self.f0, self.f1, self.subject, self.line, self.follow, self.name, self.aspect = f0, f1, subject, line, follow, name, aspect
         self.keys = sorted([dict(k) for k in keys], key=lambda k: k['f'])
         for k in self.keys:
             k.setdefault('az', 90.0); k.setdefault('el', 0.0); k.setdefault('fill', 0.8); k.setdefault('fov', 55.0)
-            k.setdefault('roll', 0.0); k.setdefault('shift', (0.0, 0.0)); k.setdefault('e', 'io'); k.setdefault('mind', 2.2)
+            k.setdefault('roll', 0.0); k.setdefault('shift', (0.0, 0.0)); k.setdefault('e', 'io'); k.setdefault('mind', 2.2); k.setdefault('cu', False)
         self._sm = None
 
     def _params(self, f):
@@ -68,6 +71,10 @@ class AutoShot:
 
     def cam(self, f):
         k = self._params(f)
+        cu = self.keys[0].get('cu', False) or any(kk.get('cu') for kk in self.keys)
+        if not cu:
+            k['fill'] = k['fill'] * self.FILL_SCALE
+            k['mind'] = max(k['mind'], self.MIN_DIST)
         pts = self.subject(f)
         L = self.line(f)
         az, el = math.radians(k['az']), math.radians(k['el'])

@@ -65,7 +65,7 @@ class Post:
         for e in evs:
             if e['t'] == 'rblur': im = self.radial_blur(im, f, e)
         # --- lens look
-        im = self.bloom(im, 0.34)
+        im = self.bloom(im, 0.2)
         ca = 1.1 * self.s + sum(e['amt'] * self.s * max(0.0, 1 - (f - e['f0']) / max(e['f1'] - e['f0'] + 1, 1)) for e in evs if e['t'] == 'ca')
         im = self.chroma(im, ca)
         g = self.grade_params(f)
@@ -97,7 +97,7 @@ class Post:
     # ------------------------------------------------------------------ lens
     def bloom(self, im, k):
         lum = im.max(axis=2, keepdims=True)
-        br = np.clip(im - 0.70, 0, None) * np.clip(lum * 1.6, 0, 1.6)
+        br = np.clip(im - 0.78, 0, None) * np.clip(lum * 1.6, 0, 1.6)
         s = self.s
         acc = cv2.GaussianBlur(br, (0, 0), 7 * s) * 0.55 + cv2.GaussianBlur(br, (0, 0), 22 * s) * 0.45 + cv2.GaussianBlur(br, (0, 0), 62 * s) * 0.40
         return im + acc * k * np.array([1.0, 0.97, 0.90], np.float32)
@@ -114,7 +114,7 @@ class Post:
         return out
 
     def grade_params(self, f):
-        g = dict(sat=1.08, contrast=1.07, exposure=1.0, vig=0.30, tint=(1.0, 1.0, 1.0))
+        g = dict(sat=1.1, contrast=1.1, exposure=1.0, vig=0.32, tint=(1.0, 1.0, 1.0))
         for e in self.ev:
             if e['t'] != 'grade' or not (e['f0'] <= f <= e['f1']): continue
             ramp = max(e.get('ramp', 6), 1)
@@ -190,7 +190,7 @@ class Post:
         age = f - e['f0']; life = max(e['f1'] - e['f0'], 1)
         grow = [0.55, 1.0, 0.85, 0.65, 0.5][min(age, 4)]
         R = e['r'] * pr[3] * grow
-        R = min(R, self.W * 0.30)
+        R = min(R, self.W * (0.27 if e['r'] > 1.8 else 0.15))
         rng = self._rng(f, e)
         n = e.get('rays', 12)
         pts = []
@@ -210,7 +210,7 @@ class Post:
         age = f - e['f0']; life = max(e['f1'] - e['f0'], 1)
         rng = self._rng(f, e, 1)
         base = np.random.RandomState(e.get('seed', 1) * 31)
-        R = min(e['r'] * pr[3], self.W * 0.34)
+        R = min(e['r'] * pr[3], self.W * 0.24)
         for i in range(e['n']):
             ang = base.uniform(0, 2 * math.pi); dist0 = base.uniform(0.35, 0.8); ln = base.uniform(0.25, 0.55); wd = base.uniform(0.05, 0.1)
             d = R * (dist0 + 0.22 * age) + rng.uniform(-3, 3) * self.s

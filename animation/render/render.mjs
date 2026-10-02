@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const args = Object.fromEntries(process.argv.slice(2).reduce((a, x, i, arr) => { if (x.startsWith('--')) a.push([x.slice(2), arr[i + 1] && !arr[i + 1].startsWith('--') ? arr[i + 1] : true]); return a; }, []));
 const shotPath = path.resolve(args.shot || '../out/shot.json'); const outDir = path.resolve(args.out || '../out/frames');
-const scale = parseFloat(args.scale || '1'); const step = parseInt(args.step || '1'); const exposure = parseFloat(args.exposure || '1');
+const scale = parseFloat(args.scale || '1'); const step = parseInt(args.step || '1'); const exposure = parseFloat(args.exposure || '0.88');
 fs.mkdirSync(outDir, { recursive: true });
 
 const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.json': 'application/json', '.png': 'image/png' };

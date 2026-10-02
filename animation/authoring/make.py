@@ -12,6 +12,8 @@ OUT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'out'))
 def build(frames=None):
     C.build()
     DR.direct_all()
+    import direction2
+    direction2.direct_all2()
     n = frames or C.N
     cam = C.CAM.track()[:n]
     focus = [[(C.P.rig.torso(f)[i] + C.D.rig.torso(f)[i]) / 2 for i in range(3)] for f in range(n)]

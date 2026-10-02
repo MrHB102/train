@@ -325,7 +325,7 @@ def contacts_opening():
 
 def build():
     import importlib
-    for mod in ('beat_air', 'beat_kicks', 'beat_blink', 'beat_heli'):
+    for mod in ('beat_air', 'beat_kicks', 'beat_blink', 'beat_heli', 'beat_pillars', 'beat_finale'):
         importlib.import_module(mod)
     for fn in AUTHOR:
         fn()

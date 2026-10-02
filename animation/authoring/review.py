@@ -13,7 +13,7 @@ RENDER = os.path.abspath(os.path.join(HERE, '..', 'render'))
 OUT = os.path.abspath(os.path.join(HERE, '..', 'out'))
 
 
-def render_frames(shot_path, frames, outdir, scale=0.3, exposure=1.0):
+def render_frames(shot_path, frames, outdir, scale=0.3, exposure=0.88):
     os.makedirs(outdir, exist_ok=True)
     for f in os.listdir(outdir):
         if f.endswith('.png'): os.remove(os.path.join(outdir, f))
@@ -57,7 +57,7 @@ def apply_post(outdir, frames, shot_path, scale):
         cv2.imwrite(pth, cv2.cvtColor(out, cv2.COLOR_RGB2BGR))
 
 
-def review(shot_path, frames, name, scale=0.3, cols=6, exposure=1.0, post=True):
+def review(shot_path, frames, name, scale=0.3, cols=6, exposure=0.88, post=True):
     od = os.path.join(OUT, 'review', name + '_frames')
     render_frames(shot_path, frames, od, scale, exposure)
     if post: apply_post(od, frames, shot_path, scale)

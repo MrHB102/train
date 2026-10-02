@@ -97,7 +97,7 @@ class Actor:
     def plant(self, frames):
         """feet-to-floor pass on grounded key frames (skill's plant on this clip)"""
         r6._S['clip'] = self.clip
-        r6.plant(frames_=frames)
+        r6.plant(frames_=[f for f in frames if float(f) in self.clip['keys']])
         self.rig.invalidate()
 
     # ---- queries
