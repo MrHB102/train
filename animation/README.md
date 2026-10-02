@@ -15,7 +15,7 @@ mais uma camada de pós-processamento 2D. Personagem do jogador e dummy usam o v
 | Caminho | O que é |
 |---|---|
 | `out/@Mr_HB_fight_18fps.mp4` | vídeo final, 18 fps nativos, com áudio |
-| `out/@Mr_HB_fight_18fps_silent.mp4` | mesmo vídeo sem áudio |
+| `out/@Mr_HB_fight_18fps_silent.mp4` | mesmo vídeo sem áudio (gerado por `run_all.py --stage encode`; não versionado) |
 | `out/@Mr_HB_fight_36fps_compat.mp4` | cada quadro repetido 2× (36 fps) para plataformas que estragam 18 fps |
 | `out/contact_sheet.jpg` | folha de contato do vídeo final (a cada 6 quadros) |
 | `out/clips/mrhb.baked.json`, `dummy.baked.json` | clipes R6 (um key por quadro) do jogador e do dummy, exatamente o que foi renderizado — para importar no Blender depois (`r6.clip_from_json` / `r6.build`) |
@@ -64,6 +64,14 @@ Revisão rápida de blocking (folha de contato em baixa resolução, qualquer tr
 Envie o `.mp4` do Short (ou um trecho). Com ele eu rodo `video_reference.py` da skill, **vejo os quadros em sequência** e
 ajusto ritmo, espaçamento dos golpes, duração dos hit-stops, câmeras e efeitos — tudo está parametrizado
 (`authoring/beat_*.py`, `direction*.py`, `fx.py`, `post/post.py`) e o re-render de um trecho leva poucos minutos.
+
+## Verificações feitas (com evidência)
+
+- MP4 final inspecionado com `ffprobe`: 1080×1920, **18/1 fps, 630 quadros, 35,000 s**, áudio AAC de 35,0 s (pico −0,7 dB); quadros decodificados do próprio MP4 conferidos visualmente.
+- Contatos: a ponta de cada golpe é resolvida por IK sobre o alvo no quadro exato do impacto (ver `contacts_solved` no manifesto; distâncias ≈0,1 stud incluem a folga intencional de "atravessar" o alvo).
+- Auditoria câmera×corpos (distância < 2,2 studs): só os quadros do push-in proposital; corrigidos depois.
+- `r6.lint(strict=True)` nos clipes autorais: os avisos restantes são limites suaves excedidos em poses estilizadas extremas e yaws acima de ±360° (giros contínuos desenrolados de propósito); nenhum canal inválido/não finito. Detalhes em `animation-manifest.json`.
+- Revisão de ritmo/continuidade feita por folhas de contato e por quadros-chave; **não** fiz verificação de reprodução em tempo real em Blender.
 
 ## Limitações honestas
 

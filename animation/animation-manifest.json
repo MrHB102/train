@@ -1,0 +1,1278 @@
+{
+  "title": "@Mr_HB vs training dummy - 35 s freestyle fight",
+  "brief": {
+    "user_request": "Animation of the Roblox user @Mr_HB fighting a dummy: 18 fps, cohesive, with dashes and effects, fast / exaggerated / strong movement, freestyle, 35 s, in the style and quality of the referenced YouTube Short. Blender is not available now: render outside Blender. Remove the old repository content and use the repo for the animation. Later instruction: do not use a custom Mr_HB skin as the rig - use the plain Roblox R6 look.",
+    "assumptions": [
+      "Output is vertical 1080x1920 (YouTube Shorts format) at a true 18 fps; a frame-doubled 36 fps version is also exported for players that dislike 18 fps.",
+      "\"Plain Roblox look\": the player uses the classic default Roblox colours (yellow head/arms, blue torso, green legs, smiley face); the dummy is a plain grey Studio-style test dummy. The only personalisation is the floating \"@Mr_HB\" name tag, a small watermark and the closing title.",
+      "No Roblox Studio / Moon Animator available: everything is authored as canonical R6 keyframes (skill r6.py DSL) and rendered by an offline three.js renderer."
+    ]
+  },
+  "tools": {
+    "blender": "not available (not executed, nothing verified in Blender)",
+    "authoring": "skill r6-animator (r6.py: DSL, FK, sample, lint) + project-side helpers (animation/authoring/*.py)",
+    "renderer": "three.js r186 in headless Chromium (WebGL2 via SwiftShader), 1080x1920, PCF shadow map, ACES tone map",
+    "post": "numpy/OpenCV: bloom, chromatic aberration, vignette, grain, motion/radial blur, hand-drawn style overlays (impact stars, shards, speed lines, glints, manga impact frames)",
+    "audio": "procedural numpy synth (120 BPM bed + SFX at the recorded impact frames)"
+  },
+  "timebase": {
+    "fps": 18,
+    "frames": 630,
+    "seconds": 35.0,
+    "bpm_grid": "120 BPM = 9 frames per beat; the main beats land on the grid (f36 first hit, f72 launch, f540 slam)"
+  },
+  "reference": {
+    "url": "https://youtube.com/shorts/IJJzI5QEWpM",
+    "title_from_oembed": "Roblox Fight Animation Practice - Moon Animator (channel: Drowsy)",
+    "access": {
+      "video_playback": "NOT ACCESSIBLE: yt-dlp was refused by YouTube (HTTP 429 / \"Sign in to confirm you are not a bot\"). Per the skill rules no cookies / auth bypass / alternate-client tricks were used.",
+      "inspected": [
+        "public oEmbed metadata (title/author)",
+        "4 static public thumbnails of the Short (1080x1920 key image + three small frames from different moments)"
+      ],
+      "motion_observed": "NONE. Timing, rhythm, dash/hit spacing and camera moves of the reference were NOT observed. No claim is made that this animation matches its timeline."
+    },
+    "observed_from_stills": [
+      "vertical 9:16 framing; Roblox-style character shown in close-ups from a low angle, alternating with a wide shot",
+      "blue-grey tiled floor, bright blue sky with soft clouds and sun glare, a large flat distant block",
+      "strong bloom/glow on highlights, chromatic fringing on edges, soft vignette",
+      "hand-drawn style effects on top of the 3D: white cubes with sketchy black outlines, white shard/slash shapes",
+      "a small creator logo in the top-left corner (not reproduced: this project uses its own @Mr_HB stamp)"
+    ],
+    "inferred": "Stepped 18 fps exposure, dashes with trails and impact effects come from the USER DESCRIPTION, not from observation. An uploaded .mp4 of the Short is needed for a real motion-reference pass (see README, \"Refinar com o vídeo\").",
+    "transferable_principles_used": [
+      "hold -> snap -> hold timing with 2-4 frame snaps and 1-2 frame hit-stops",
+      "hand-drawn style overlays on top of a lit 3D scene",
+      "alternating wide / close low-angle cameras",
+      "bloom + chromatic aberration lens look"
+    ]
+  },
+  "originality": "All poses, timings, contacts, cameras and effects are authored for this project. The skill database was only queried for principles (db.py ls/find/style); no database animation, preset or example choreography was loaded, copied or retimed.",
+  "beat_sheet": [
+    {
+      "frames": [
+        0,
+        29
+      ],
+      "seconds": [
+        0.0,
+        1.67
+      ],
+      "beat": "Hook",
+      "content": "Hero shot, name tag pops in, coil for the dash"
+    },
+    {
+      "frames": [
+        30,
+        54
+      ],
+      "seconds": [
+        1.67,
+        3.06
+      ],
+      "beat": "Dash strike",
+      "content": "Speed-dash with after-images, straight punch (f36), dummy thrown, crash + slide, pop-up"
+    },
+    {
+      "frames": [
+        55,
+        72
+      ],
+      "seconds": [
+        3.06,
+        4.06
+      ],
+      "beat": "Ground combo",
+      "content": "Jab, cross, left hook, thrust kick, rising uppercut (launch)"
+    },
+    {
+      "frames": [
+        73,
+        110
+      ],
+      "seconds": [
+        4.06,
+        6.17
+      ],
+      "beat": "Air combo",
+      "content": "Leap, front kick, spin back kick, roundhouse, flip kick, double axe fists, meteor crash (f102)"
+    },
+    {
+      "frames": [
+        111,
+        123
+      ],
+      "seconds": [
+        6.17,
+        6.89
+      ],
+      "beat": "Calm",
+      "content": "Hero landing, beckon, dummy springs up"
+    },
+    {
+      "frames": [
+        124,
+        176
+      ],
+      "seconds": [
+        6.89,
+        9.83
+      ],
+      "beat": "Kick flurry",
+      "content": "Slide sweep, front-flip axe kick, side kick, spinning hook kick, cartwheel, double drop-kick"
+    },
+    {
+      "frames": [
+        177,
+        222
+      ],
+      "seconds": [
+        9.83,
+        12.39
+      ],
+      "beat": "Blink steps",
+      "content": "Six teleporting strikes from six sides, double palm blast"
+    },
+    {
+      "frames": [
+        223,
+        262
+      ],
+      "seconds": [
+        12.39,
+        14.61
+      ],
+      "beat": "Hammer throw",
+      "content": "Ankle grab, 2.75 revolutions with the dummy attached to the hands, release"
+    },
+    {
+      "frames": [
+        263,
+        312
+      ],
+      "seconds": [
+        14.61,
+        17.39
+      ],
+      "beat": "Helicopter",
+      "content": "Speed-dash, handstand spin with three leg sweeps, dragon uppercut corkscrew, bicycle kick"
+    },
+    {
+      "frames": [
+        313,
+        365
+      ],
+      "seconds": [
+        17.39,
+        20.33
+      ],
+      "beat": "Rock pillars",
+      "content": "Calm walk, stomp, three stone pillars launch the dummy"
+    },
+    {
+      "frames": [
+        366,
+        405
+      ],
+      "seconds": [
+        20.33,
+        22.56
+      ],
+      "beat": "Juggle",
+      "content": "Knee, instep, header, thigh, knee, scooping lob into the sky"
+    },
+    {
+      "frames": [
+        406,
+        488
+      ],
+      "seconds": [
+        22.56,
+        27.17
+      ],
+      "beat": "Flow charge",
+      "content": "540 spin, back-somersault, slide, power pose with aura while the dummy hangs overhead"
+    },
+    {
+      "frames": [
+        489,
+        541
+      ],
+      "seconds": [
+        27.17,
+        30.11
+      ],
+      "beat": "Sky finisher",
+      "content": "Super-leap, 14-punch barrage, freeze, face grab, dive, head-first slam (impact f541)"
+    },
+    {
+      "frames": [
+        542,
+        629
+      ],
+      "seconds": [
+        30.11,
+        35.0
+      ],
+      "beat": "Aftermath",
+      "content": "Crater cracks spread, the player rises and walks out; closing stance and title"
+    }
+  ],
+  "cameras": [
+    {
+      "f0": 0,
+      "f1": 10,
+      "name": "intro-hero"
+    },
+    {
+      "f0": 10,
+      "f1": 30,
+      "name": "ots-wide"
+    },
+    {
+      "f0": 30,
+      "f1": 35,
+      "name": "dash-track"
+    },
+    {
+      "f0": 35,
+      "f1": 45,
+      "name": "impact-cu"
+    },
+    {
+      "f0": 45,
+      "f1": 56,
+      "name": "crash-wide"
+    },
+    {
+      "f0": 55,
+      "f1": 59,
+      "name": "combo-1"
+    },
+    {
+      "f0": 59,
+      "f1": 63,
+      "name": "combo-2"
+    },
+    {
+      "f0": 63,
+      "f1": 67,
+      "name": "combo-3"
+    },
+    {
+      "f0": 67,
+      "f1": 71,
+      "name": "combo-4"
+    },
+    {
+      "f0": 71,
+      "f1": 79,
+      "name": "combo-5-launch"
+    },
+    {
+      "f0": 79,
+      "f1": 84,
+      "name": "air-rise"
+    },
+    {
+      "f0": 84,
+      "f1": 87,
+      "name": "air-k1"
+    },
+    {
+      "f0": 87,
+      "f1": 90,
+      "name": "air-k2"
+    },
+    {
+      "f0": 90,
+      "f1": 94,
+      "name": "air-k3"
+    },
+    {
+      "f0": 94,
+      "f1": 99,
+      "name": "air-k4-orbit"
+    },
+    {
+      "f0": 99,
+      "f1": 103,
+      "name": "air-slam"
+    },
+    {
+      "f0": 103,
+      "f1": 112,
+      "name": "crater-wide"
+    },
+    {
+      "f0": 112,
+      "f1": 118,
+      "name": "calm-hero"
+    },
+    {
+      "f0": 118,
+      "f1": 124,
+      "name": "calm-two"
+    },
+    {
+      "f0": 124,
+      "f1": 128,
+      "name": "approach"
+    },
+    {
+      "f0": 128,
+      "f1": 132,
+      "name": "sweep"
+    },
+    {
+      "f0": 132,
+      "f1": 136,
+      "name": "flip"
+    },
+    {
+      "f0": 136,
+      "f1": 141,
+      "name": "bounces"
+    },
+    {
+      "f0": 141,
+      "f1": 146,
+      "name": "side-kick"
+    },
+    {
+      "f0": 146,
+      "f1": 151,
+      "name": "hook-kick"
+    },
+    {
+      "f0": 151,
+      "f1": 158,
+      "name": "cartwheel"
+    },
+    {
+      "f0": 158,
+      "f1": 162,
+      "name": "dropkick"
+    },
+    {
+      "f0": 162,
+      "f1": 172,
+      "name": "dummy-flight"
+    },
+    {
+      "f0": 172,
+      "f1": 182,
+      "name": "blink-setup"
+    },
+    {
+      "f0": 182,
+      "f1": 187,
+      "name": "blink-hit"
+    },
+    {
+      "f0": 186,
+      "f1": 192,
+      "name": "blink-hit"
+    },
+    {
+      "f0": 191,
+      "f1": 197,
+      "name": "blink-hit"
+    },
+    {
+      "f0": 196,
+      "f1": 202,
+      "name": "blink-hit"
+    },
+    {
+      "f0": 201,
+      "f1": 208,
+      "name": "blink-hit"
+    },
+    {
+      "f0": 207,
+      "f1": 212,
+      "name": "blink-hit"
+    },
+    {
+      "f0": 212,
+      "f1": 222,
+      "name": "blast-follow"
+    },
+    {
+      "f0": 222,
+      "f1": 228,
+      "name": "run-grab"
+    },
+    {
+      "f0": 228,
+      "f1": 247,
+      "name": "orbit"
+    },
+    {
+      "f0": 247,
+      "f1": 259,
+      "name": "throw-flight"
+    },
+    {
+      "f0": 259,
+      "f1": 267,
+      "name": "handspring"
+    },
+    {
+      "f0": 267,
+      "f1": 278,
+      "name": "heli-orbit"
+    },
+    {
+      "f0": 278,
+      "f1": 285,
+      "name": "crouch"
+    },
+    {
+      "f0": 285,
+      "f1": 296,
+      "name": "dragon-rise"
+    },
+    {
+      "f0": 296,
+      "f1": 304,
+      "name": "bicycle"
+    },
+    {
+      "f0": 304,
+      "f1": 312,
+      "name": "bike-flight"
+    },
+    {
+      "f0": 312,
+      "f1": 330,
+      "name": "walk-wide"
+    },
+    {
+      "f0": 330,
+      "f1": 336,
+      "name": "stomp"
+    },
+    {
+      "f0": 336,
+      "f1": 341,
+      "name": "pillar-cam"
+    },
+    {
+      "f0": 341,
+      "f1": 346,
+      "name": "pillar-cam"
+    },
+    {
+      "f0": 346,
+      "f1": 354,
+      "name": "pillar-cam"
+    },
+    {
+      "f0": 354,
+      "f1": 366,
+      "name": "dash-under"
+    },
+    {
+      "f0": 366,
+      "f1": 372,
+      "name": "juggle-cut"
+    },
+    {
+      "f0": 372,
+      "f1": 378,
+      "name": "juggle-cut"
+    },
+    {
+      "f0": 378,
+      "f1": 384,
+      "name": "juggle-cut"
+    },
+    {
+      "f0": 384,
+      "f1": 390,
+      "name": "juggle-cut"
+    },
+    {
+      "f0": 390,
+      "f1": 396,
+      "name": "juggle-cut"
+    },
+    {
+      "f0": 396,
+      "f1": 408,
+      "name": "lob-up"
+    },
+    {
+      "f0": 408,
+      "f1": 421,
+      "name": "spin"
+    },
+    {
+      "f0": 421,
+      "f1": 428,
+      "name": "flip"
+    },
+    {
+      "f0": 428,
+      "f1": 440,
+      "name": "slide"
+    },
+    {
+      "f0": 440,
+      "f1": 470,
+      "name": "charge-orbit"
+    },
+    {
+      "f0": 470,
+      "f1": 484,
+      "name": "look-up"
+    },
+    {
+      "f0": 484,
+      "f1": 489,
+      "name": "charge-push"
+    },
+    {
+      "f0": 489,
+      "f1": 498,
+      "name": "leap"
+    },
+    {
+      "f0": 498,
+      "f1": 502,
+      "name": "barrage"
+    },
+    {
+      "f0": 501,
+      "f1": 506,
+      "name": "barrage"
+    },
+    {
+      "f0": 505,
+      "f1": 510,
+      "name": "barrage"
+    },
+    {
+      "f0": 509,
+      "f1": 514,
+      "name": "barrage"
+    },
+    {
+      "f0": 513,
+      "f1": 518,
+      "name": "barrage"
+    },
+    {
+      "f0": 517,
+      "f1": 522,
+      "name": "barrage"
+    },
+    {
+      "f0": 521,
+      "f1": 526,
+      "name": "barrage"
+    },
+    {
+      "f0": 526,
+      "f1": 532,
+      "name": "freeze"
+    },
+    {
+      "f0": 532,
+      "f1": 535,
+      "name": "grab"
+    },
+    {
+      "f0": 535,
+      "f1": 539,
+      "name": "dive"
+    },
+    {
+      "f0": 539,
+      "f1": 542,
+      "name": "slam"
+    },
+    {
+      "f0": 542,
+      "f1": 565,
+      "name": "crater-crane"
+    },
+    {
+      "f0": 565,
+      "f1": 596,
+      "name": "walk-away"
+    },
+    {
+      "f0": 596,
+      "f1": 612,
+      "name": "turn"
+    },
+    {
+      "f0": 612,
+      "f1": 630,
+      "name": "hero-end"
+    }
+  ],
+  "impact_and_sfx_table": [
+    {
+      "frame": 30,
+      "kind": "whoosh",
+      "strength": 2
+    },
+    {
+      "frame": 36,
+      "kind": "hit",
+      "strength": 3
+    },
+    {
+      "frame": 46,
+      "kind": "crash",
+      "strength": 3
+    },
+    {
+      "frame": 42,
+      "kind": "whoosh",
+      "strength": 2
+    },
+    {
+      "frame": 56,
+      "kind": "hit",
+      "strength": 1
+    },
+    {
+      "frame": 59,
+      "kind": "hit",
+      "strength": 2
+    },
+    {
+      "frame": 64,
+      "kind": "hit",
+      "strength": 2
+    },
+    {
+      "frame": 68,
+      "kind": "hit",
+      "strength": 2
+    },
+    {
+      "frame": 72,
+      "kind": "hit",
+      "strength": 3
+    },
+    {
+      "frame": 75,
+      "kind": "whoosh",
+      "strength": 3
+    },
+    {
+      "frame": 84,
+      "kind": "hit",
+      "strength": 2
+    },
+    {
+      "frame": 87,
+      "kind": "hit",
+      "strength": 2
+    },
+    {
+      "frame": 90,
+      "kind": "hit",
+      "strength": 3
+    },
+    {
+      "frame": 94,
+      "kind": "hit",
+      "strength": 3
+    },
+    {
+      "frame": 99,
+      "kind": "hit",
+      "strength": 4
+    },
+    {
+      "frame": 102,
+      "kind": "crash",
+      "strength": 4
+    },
+    {
+      "frame": 128,
+      "kind": "hit",
+      "strength": 2
+    },
+    {
+      "frame": 134,
+      "kind": "hit",
+      "strength": 3
+    },
+    {
+      "frame": 135,
+      "kind": "crash",
+      "strength": 2
+    },
+    {
+      "frame": 137,
+      "kind": "crash",
+      "strength": 1
+    },
+    {
+      "frame": 141,
+      "kind": "hit",
+      "strength": 2
+    },
+    {
+      "frame": 146,
+      "kind": "hit",
+      "strength": 3
+    },
+    {
+      "frame": 150,
+      "kind": "whoosh",
+      "strength": 2
+    },
+    {
+      "frame": 159,
+      "kind": "hit",
+      "strength": 3
+    },
+    {
+      "frame": 169,
+      "kind": "crash",
+      "strength": 2
+    },
+    {
+      "frame": 182,
+      "kind": "hit",
+      "strength": 2
+    },
+    {
+      "frame": 181,
+      "kind": "blink",
+      "strength": 2
+    },
+    {
+      "frame": 187,
+      "kind": "hit",
+      "strength": 2
+    },
+    {
+      "frame": 186,
+      "kind": "blink",
+      "strength": 2
+    },
+    {
+      "frame": 192,
+      "kind": "hit",
+      "strength": 3
+    },
+    {
+      "frame": 191,
+      "kind": "blink",
+      "strength": 2
+    },
+    {
+      "frame": 197,
+      "kind": "hit",
+      "strength": 3
+    },
+    {
+      "frame": 196,
+      "kind": "blink",
+      "strength": 2
+    },
+    {
+      "frame": 202,
+      "kind": "hit",
+      "strength": 3
+    },
+    {
+      "frame": 201,
+      "kind": "blink",
+      "strength": 2
+    },
+    {
+      "frame": 208,
+      "kind": "hit",
+      "strength": 4
+    },
+    {
+      "frame": 207,
+      "kind": "blink",
+      "strength": 2
+    },
+    {
+      "frame": 218,
+      "kind": "crash",
+      "strength": 2
+    },
+    {
+      "frame": 214,
+      "kind": "whoosh",
+      "strength": 2
+    },
+    {
+      "frame": 247,
+      "kind": "whoosh",
+      "strength": 3
+    },
+    {
+      "frame": 259,
+      "kind": "crash",
+      "strength": 3
+    },
+    {
+      "frame": 250,
+      "kind": "whoosh",
+      "strength": 2
+    },
+    {
+      "frame": 250,
+      "kind": "whoosh",
+      "strength": 2
+    },
+    {
+      "frame": 270,
+      "kind": "hit",
+      "strength": 2
+    },
+    {
+      "frame": 273,
+      "kind": "hit",
+      "strength": 2
+    },
+    {
+      "frame": 276,
+      "kind": "hit",
+      "strength": 2
+    },
+    {
+      "frame": 285,
+      "kind": "hit",
+      "strength": 3
+    },
+    {
+      "frame": 296,
+      "kind": "hit",
+      "strength": 3
+    },
+    {
+      "frame": 306,
+      "kind": "crash",
+      "strength": 2
+    },
+    {
+      "frame": 330,
+      "kind": "crash",
+      "strength": 2
+    },
+    {
+      "frame": 336,
+      "kind": "crash",
+      "strength": 3
+    },
+    {
+      "frame": 341,
+      "kind": "crash",
+      "strength": 3
+    },
+    {
+      "frame": 346,
+      "kind": "crash",
+      "strength": 3
+    },
+    {
+      "frame": 366,
+      "kind": "hit",
+      "strength": 1
+    },
+    {
+      "frame": 372,
+      "kind": "hit",
+      "strength": 1
+    },
+    {
+      "frame": 384,
+      "kind": "hit",
+      "strength": 1
+    },
+    {
+      "frame": 390,
+      "kind": "hit",
+      "strength": 1
+    },
+    {
+      "frame": 378,
+      "kind": "hit",
+      "strength": 2
+    },
+    {
+      "frame": 396,
+      "kind": "hit",
+      "strength": 3
+    },
+    {
+      "frame": 414,
+      "kind": "whoosh",
+      "strength": 3
+    },
+    {
+      "frame": 428,
+      "kind": "whoosh",
+      "strength": 2
+    },
+    {
+      "frame": 440,
+      "kind": "charge",
+      "strength": 3
+    },
+    {
+      "frame": 489,
+      "kind": "boom",
+      "strength": 4
+    },
+    {
+      "frame": 498,
+      "kind": "hit",
+      "strength": 1
+    },
+    {
+      "frame": 498,
+      "kind": "hit",
+      "strength": 1
+    },
+    {
+      "frame": 500,
+      "kind": "hit",
+      "strength": 1
+    },
+    {
+      "frame": 500,
+      "kind": "hit",
+      "strength": 1
+    },
+    {
+      "frame": 502,
+      "kind": "hit",
+      "strength": 1
+    },
+    {
+      "frame": 502,
+      "kind": "hit",
+      "strength": 1
+    },
+    {
+      "frame": 504,
+      "kind": "hit",
+      "strength": 2
+    },
+    {
+      "frame": 504,
+      "kind": "hit",
+      "strength": 1
+    },
+    {
+      "frame": 506,
+      "kind": "hit",
+      "strength": 1
+    },
+    {
+      "frame": 506,
+      "kind": "hit",
+      "strength": 1
+    },
+    {
+      "frame": 508,
+      "kind": "hit",
+      "strength": 1
+    },
+    {
+      "frame": 508,
+      "kind": "hit",
+      "strength": 1
+    },
+    {
+      "frame": 510,
+      "kind": "hit",
+      "strength": 1
+    },
+    {
+      "frame": 510,
+      "kind": "hit",
+      "strength": 1
+    },
+    {
+      "frame": 512,
+      "kind": "hit",
+      "strength": 2
+    },
+    {
+      "frame": 512,
+      "kind": "hit",
+      "strength": 1
+    },
+    {
+      "frame": 514,
+      "kind": "hit",
+      "strength": 1
+    },
+    {
+      "frame": 514,
+      "kind": "hit",
+      "strength": 1
+    },
+    {
+      "frame": 516,
+      "kind": "hit",
+      "strength": 1
+    },
+    {
+      "frame": 516,
+      "kind": "hit",
+      "strength": 1
+    },
+    {
+      "frame": 518,
+      "kind": "hit",
+      "strength": 1
+    },
+    {
+      "frame": 518,
+      "kind": "hit",
+      "strength": 1
+    },
+    {
+      "frame": 520,
+      "kind": "hit",
+      "strength": 2
+    },
+    {
+      "frame": 520,
+      "kind": "hit",
+      "strength": 1
+    },
+    {
+      "frame": 522,
+      "kind": "hit",
+      "strength": 1
+    },
+    {
+      "frame": 522,
+      "kind": "hit",
+      "strength": 1
+    },
+    {
+      "frame": 524,
+      "kind": "hit",
+      "strength": 1
+    },
+    {
+      "frame": 524,
+      "kind": "hit",
+      "strength": 1
+    },
+    {
+      "frame": 527,
+      "kind": "charge",
+      "strength": 3
+    },
+    {
+      "frame": 532,
+      "kind": "hit",
+      "strength": 2
+    },
+    {
+      "frame": 532,
+      "kind": "hit",
+      "strength": 3
+    },
+    {
+      "frame": 540,
+      "kind": "crash",
+      "strength": 4
+    },
+    {
+      "frame": 540,
+      "kind": "boom",
+      "strength": 4
+    },
+    {
+      "frame": 612,
+      "kind": "boom",
+      "strength": 1
+    }
+  ],
+  "contacts_solved": [
+    "contact dash-punch             f36   tip-to-target=0.089 studs",
+    "contact dash-punch hitstop     f37   tip-to-target=0.308 studs",
+    "contact dash-punch hitstop2    f38   tip-to-target=0.092 studs",
+    "contact jab                    f56   tip-to-target=0.091 studs",
+    "contact cross                  f59   tip-to-target=0.168 studs",
+    "contact cross hitstop          f60   tip-to-target=0.096 studs",
+    "contact left hook              f64   tip-to-target=0.086 studs",
+    "contact thrust kick            f68   tip-to-target=0.105 studs",
+    "contact uppercut               f72   tip-to-target=0.100 studs",
+    "contact air front kick         f84   tip-to-target=0.146 studs",
+    "contact air front kick hs      f85   tip-to-target=0.114 studs",
+    "contact air back kick          f87   tip-to-target=0.111 studs",
+    "contact air roundhouse         f90   tip-to-target=0.097 studs",
+    "contact flip kick              f94   tip-to-target=0.124 studs",
+    "contact double axe R           f99   tip-to-target=0.092 studs",
+    "contact double axe L           f99   tip-to-target=0.139 studs",
+    "contact sweep                  f128  tip-to-target=0.091 studs",
+    "contact front-flip axe kick    f134  tip-to-target=0.112 studs",
+    "contact side kick              f141  tip-to-target=0.087 studs",
+    "contact spinning hook kick     f146  tip-to-target=0.086 studs",
+    "contact drop-kick L            f159  tip-to-target=0.127 studs",
+    "contact drop-kick R            f159  tip-to-target=0.092 studs",
+    "contact blink 1 cross (back)   f182  tip-to-target=0.113 studs",
+    "contact blink 2 chop (left flank) f187  tip-to-target=0.113 studs",
+    "contact blink 3 axe kick (crown) f192  tip-to-target=0.109 studs",
+    "contact blink 4 roundhouse (ribs) f197  tip-to-target=0.103 studs",
+    "contact blink 5 uppercut (chin) f202  tip-to-target=0.101 studs",
+    "contact blink 6 palm R         f208  tip-to-target=0.153 studs",
+    "contact blink 6 palm L         f208  tip-to-target=0.113 studs",
+    "contact grab ankle R           f225  tip-to-target=0.041 studs",
+    "contact grab ankle L           f225  tip-to-target=0.151 studs",
+    "contact heli sweep 1 (R leg)   f270  tip-to-target=0.101 studs",
+    "contact heli sweep 2 (L leg)   f273  tip-to-target=0.085 studs",
+    "contact heli sweep 3 (R leg)   f276  tip-to-target=0.098 studs",
+    "contact dragon uppercut        f285  tip-to-target=0.095 studs",
+    "contact bicycle kick           f296  tip-to-target=0.131 studs",
+    "contact juggle 1 knee          f366  tip-to-target=0.114 studs",
+    "contact juggle 2 instep        f372  tip-to-target=0.098 studs",
+    "contact juggle 4 thigh         f384  tip-to-target=0.105 studs",
+    "contact juggle 5 knee          f390  tip-to-target=0.098 studs",
+    "contact juggle 6 lob           f396  tip-to-target=0.104 studs",
+    "contact barrage 1              f498  tip-to-target=0.079 studs",
+    "contact barrage 2              f500  tip-to-target=0.137 studs",
+    "contact barrage 3              f502  tip-to-target=0.118 studs",
+    "contact barrage 4              f504  tip-to-target=0.123 studs",
+    "contact barrage 5              f506  tip-to-target=0.109 studs",
+    "contact barrage 6              f508  tip-to-target=0.107 studs",
+    "contact barrage 7              f510  tip-to-target=0.079 studs",
+    "contact barrage 8              f512  tip-to-target=0.137 studs",
+    "contact barrage 9              f514  tip-to-target=0.118 studs",
+    "contact barrage 10             f516  tip-to-target=0.123 studs",
+    "contact barrage 11             f518  tip-to-target=0.109 studs",
+    "contact barrage 12             f520  tip-to-target=0.107 studs",
+    "contact barrage 13             f522  tip-to-target=0.079 studs",
+    "contact barrage 14             f524  tip-to-target=0.137 studs",
+    "contact face grab              f532  tip-to-target=0.011 studs",
+    "contact face grab dive f533    f533  tip-to-target=0.039 studs",
+    "contact face grab dive f534    f534  tip-to-target=0.040 studs",
+    "contact face grab dive f535    f535  tip-to-target=0.006 studs",
+    "contact face grab dive f536    f536  tip-to-target=0.038 studs",
+    "contact face grab dive f537    f537  tip-to-target=0.036 studs",
+    "contact face grab dive f538    f538  tip-to-target=0.006 studs",
+    "contact face grab dive f539    f539  tip-to-target=0.007 studs",
+    "contact face grab dive f540    f540  tip-to-target=0.002 studs"
+  ],
+  "dummy_hurt_face_frames": 520,
+  "player_blink_hidden_frames": 15,
+  "checks": {
+    "lint_strict": {
+      "player": {
+        "keys": 368,
+        "length_s": 34.944,
+        "strict_lint_first_30": [
+          "W f68 rl pitch -79° outside [-70,120]",
+          "W f68 rl roll -136° outside [-35,60]",
+          "W f84 rl roll -36° outside [-35,60]",
+          "W f87 ll roll -109° outside [-35,60]",
+          "W f88 ll pitch -98° outside [-70,120]",
+          "W f90 hrp yaw 446° outside [-360,360]",
+          "W f90 rl roll -137° outside [-35,60]",
+          "W f91 hrp yaw 446° outside [-360,360]",
+          "W f93 hrp yaw 446° outside [-360,360]",
+          "W f94 hrp yaw 446° outside [-360,360]",
+          "W f94 rl roll -38° outside [-35,60]",
+          "W f95 hrp yaw 446° outside [-360,360]",
+          "W f96 hrp yaw 446° outside [-360,360]",
+          "W f97 hrp yaw 446° outside [-360,360]",
+          "W f98 hrp yaw 446° outside [-360,360]",
+          "W f99 hrp yaw 446° outside [-360,360]",
+          "W f99 ra pitch -94° outside [-60,190]",
+          "W f99 ra roll 191° outside [-75,190]",
+          "W f99 la pitch -112° outside [-60,190]",
+          "W f99 la roll 193° outside [-75,190]",
+          "W f100 hrp yaw 446° outside [-360,360]",
+          "W f101 hrp yaw 446° outside [-360,360]",
+          "W f102 hrp yaw 446° outside [-360,360]",
+          "W f103 hrp yaw 446° outside [-360,360]",
+          "W f108 hrp yaw 446° outside [-360,360]",
+          "W f114 hrp yaw 446° outside [-360,360]",
+          "W f116 hrp yaw 446° outside [-360,360]",
+          "W f118 hrp yaw 446° outside [-360,360]",
+          "W f120 hrp yaw 446° outside [-360,360]",
+          "W f121 hrp yaw 446° outside [-360,360]"
+        ]
+      },
+      "dummy": {
+        "keys": 460,
+        "length_s": 34.944,
+        "strict_lint_first_30": [
+          "W f46 hrp yaw 537° outside [-360,360]",
+          "W f47 hrp yaw 536° outside [-360,360]",
+          "W f48 hrp yaw 544° outside [-360,360]",
+          "W f49 hrp yaw 580° outside [-360,360]",
+          "W f50 hrp yaw 617° outside [-360,360]",
+          "W f51 hrp yaw 629° outside [-360,360]",
+          "W f52 hrp yaw 454° outside [-360,360]",
+          "W f53 hrp yaw 454° outside [-360,360]",
+          "W f54 hrp yaw 454° outside [-360,360]",
+          "W f64 h yaw 86° outside [-85,85]",
+          "W f90 h yaw 88° outside [-85,85]",
+          "W f91 h yaw 90° outside [-85,85]",
+          "W f94 h pitch -62° outside [-60,70]",
+          "W f95 h pitch -66° outside [-60,70]",
+          "W f97 hrp yaw -496° outside [-360,360]",
+          "W f98 hrp yaw -496° outside [-360,360]",
+          "W f104 hrp yaw -496° outside [-360,360]",
+          "W f105 hrp yaw -496° outside [-360,360]",
+          "W f106 hrp yaw -496° outside [-360,360]",
+          "W f107 hrp yaw -496° outside [-360,360]",
+          "W f108 hrp yaw -496° outside [-360,360]",
+          "W f114 hrp yaw -496° outside [-360,360]",
+          "W f116 hrp yaw -496° outside [-360,360]",
+          "W f117 hrp yaw -496° outside [-360,360]",
+          "W f124 hrp yaw 626° outside [-360,360]",
+          "W f127 hrp yaw 626° outside [-360,360]",
+          "W f128 hrp yaw 454° outside [-360,360]",
+          "W f129 hrp yaw 454° outside [-360,360]",
+          "W f130 hrp yaw 454° outside [-360,360]",
+          "W f131 hrp yaw 454° outside [-360,360]"
+        ]
+      }
+    },
+    "contact": "every strike tip is IK-solved onto its target point on the impact frame (tip-to-target distances in contacts_solved include a deliberate ~0.1 stud drive-through slack); see list.",
+    "floor": "a per-frame floor constraint lifts a character whenever any part would go under y=0 (used for lying/rotating bodies); the baked clips include it.",
+    "camera_collision_audit": "automated audit (camera vs every body part, flagged < 2.2 studs): see run log in README; the only flagged frames before the last revision were the deliberate close push-in.",
+    "not_verified": [
+      "Blender import/playback",
+      "foot sliding in world space during dashes/slides (intentional), planted-foot QA was not declared with qa.py plans",
+      "continuous playback judged only through contact sheets and the final MP4"
+    ]
+  },
+  "intentional_stylisation": [
+    "R6 rigid limbs (no elbows/knees) with exaggerated torque, wide ranges and stepped 18 fps exposure",
+    "hit-stops of 1-2 frames, smears via 3D streaks and 2D shards",
+    "floating/hanging dummy physics (low gravity) for readability",
+    "manga-style inverted impact frames on the biggest hits (f102, f208, f540)"
+  ],
+  "unresolved_findings": [
+    "The reference video could not be watched, so the style match is by description + stills only.",
+    "Some R6 joint overlaps (arms through torso) can occur for 1-3 frames on extreme poses; they are brief and mostly hidden by hit effects.",
+    "The lint warns about >120 deg single-segment rotations on flip keys; they are keyed every frame so the rendered motion is correct, but a Blender import using quaternion F-curves should keep the per-frame keys."
+  ],
+  "deliverables": [
+    "out/@Mr_HB_fight_18fps.mp4",
+    "out/@Mr_HB_fight_18fps_silent.mp4",
+    "out/@Mr_HB_fight_36fps_compat.mp4",
+    "out/clips/mrhb.baked.json",
+    "out/clips/dummy.baked.json",
+    "out/contact_sheet.jpg",
+    "animation/authoring/*.py (authoring source)",
+    "animation/render, animation/post, animation/audio"
+  ]
+}

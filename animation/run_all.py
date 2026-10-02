@@ -93,7 +93,7 @@ def stage_encode():
     main = os.path.join(OUT, '@Mr_HB_fight_18fps.mp4')
     silent = os.path.join(OUT, '@Mr_HB_fight_18fps_silent.mp4')
     compat = os.path.join(OUT, '@Mr_HB_fight_36fps_compat.mp4')
-    vflags = ['-c:v', 'libx264', '-preset', 'slow', '-crf', '15', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', '-profile:v', 'high']
+    vflags = ['-c:v', 'libx264', '-preset', 'medium', '-crf', '21', '-maxrate', '9M', '-bufsize', '18M', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', '-profile:v', 'high']
     subprocess.check_call(['ffmpeg', '-y', '-v', 'error', '-framerate', str(FPS), '-i', src, '-i', aud, '-map', '0:v', '-map', '1:a', *vflags,
                            '-c:a', 'aac', '-b:a', '192k', '-shortest', main])
     subprocess.check_call(['ffmpeg', '-y', '-v', 'error', '-framerate', str(FPS), '-i', src, *vflags, silent])

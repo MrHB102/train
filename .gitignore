@@ -10,3 +10,6 @@ animation/out/tmp/
 animation/out/audio/*.wav
 animation/out/frames_post/
 animation/out/render.log
+animation/out/*_silent.mp4
+animation/out/tmp/
+animation/out/encode.log
