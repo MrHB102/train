@@ -10,7 +10,8 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const args = Object.fromEntries(process.argv.slice(2).reduce((a, x, i, arr) => { if (x.startsWith('--')) a.push([x.slice(2), arr[i + 1] && !arr[i + 1].startsWith('--') ? arr[i + 1] : true]); return a; }, []));
 const shotPath = path.resolve(args.shot || '../out/shot.json'); const outDir = path.resolve(args.out || '../out/frames');
 const scale = parseFloat(args.scale || '1'); const step = parseInt(args.step || '1'); const exposure = parseFloat(args.exposure || '0.88');
-fs.mkdirSync(outDir, { recursive: true });
+const depthDir = args.depth ? path.resolve(String(args.depth)) : null;   // --depth DIR: also write the depth pass
+fs.mkdirSync(outDir, { recursive: true }); if (depthDir) fs.mkdirSync(depthDir, { recursive: true });
 
 const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.json': 'application/json', '.png': 'image/png' };
 const server = http.createServer((req, res) => {
@@ -33,8 +34,11 @@ const list = args.list ? String(args.list).split(',').map(Number) : null;
 const todo = list || Array.from({ length: Math.ceil((to - from) / step) }, (_, i) => from + i * step);
 const t0 = Date.now(); let n = 0;
 for (const f of todo) {
-  const url = await page.evaluate(i => window.renderFrame(i), f);
-  fs.writeFileSync(path.join(outDir, `f${String(f).padStart(4, '0')}.png`), Buffer.from(url.split(',')[1], 'base64'));
+  const res = await page.evaluate(([i, d]) => window.renderFrame(i, d ? 'both' : 'color'), [f, !!depthDir]);
+  const name = `f${String(f).padStart(4, '0')}.png`;
+  const url = depthDir ? res.color : res;
+  fs.writeFileSync(path.join(outDir, name), Buffer.from(url.split(',')[1], 'base64'));
+  if (depthDir) fs.writeFileSync(path.join(depthDir, name), Buffer.from(res.depth.split(',')[1], 'base64'));
   n++; if (n % 10 === 0 || n === todo.length) console.log(`rendered ${n}/${todo.length}  ${((Date.now() - t0) / n / 1000).toFixed(2)}s/frame  ${info.w}x${info.h}`);
 }
 await browser.close(); server.close();

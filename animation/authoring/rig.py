@@ -51,6 +51,7 @@ class Rig:
     def __init__(self, clip, floor=True):
         self.clip = clip
         self.floor = floor
+        self.evalfn = None          # v2: callable(story_frame) -> pose evaluated from the Blender F-curves
         self._cache = {}
         self._pcache = {}
 
@@ -58,7 +59,7 @@ class Rig:
         """sampled pose with the floor constraint applied: no part may go under y=0 (HRP is lifted by the penetration)."""
         if f in self._pcache:
             return self._pcache[f]
-        p = r6.sample(self.clip, f)
+        p = self.evalfn(f) if self.evalfn else r6.sample(self.clip, f)
         if self.floor:
             m = lowest_point(p)
             if m < -1e-3:

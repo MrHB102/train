@@ -183,14 +183,24 @@ def beat_hammer():
         lean = -10 - 28 * sm(min(1.0, k * 1.6))
         P.k(f, 'lin', hrp=H(cx, 0.0, cz, th), t=(lean, 0, 0, 0, -0.3), h=(-6, 0), ra=(88, 0, 4), la=(88, 0, 4), ll=(30, 0, 14), rl=(-26, 0, 16))
     P.plant([SP0 + i for i in range(0, n + 1, 3)])
+    # spin sub-keys: the player's heading at quarter frames, so the orbiting dummy (keyed at the same quarter frames below)
+    # follows the circle instead of cutting the chord between whole-frame keys (that chord put its legs into the chest)
+    def theta_at(t):
+        i = int(math.floor(t)); fr_ = t - i
+        if i >= SP1: return thetas[SP1]
+        return thetas[i] + (thetas[i + 1] - thetas[i]) * fr_
+    for f in range(SP0, SP1):
+        for q in (0.25, 0.5, 0.75):
+            P.p(f + q, 'lin', hrp=H(cx, 0.0, cz, theta_at(f + q)))
     prev = tuple(D.cell('hrp'))
     # (rebuild d during hoist) frames GRAB..SP0: dummy lifted from the floor by the hands
-    for f in range(GRAB, SP1 + 1):
+    times = [float(f) for f in range(GRAB, SP0)] + [SP0 + 0.25 * j for j in range(int((SP1 - SP0) * 4) + 1)]
+    for f in times:
         if f < SP0:
             u = (f - GRAB) / (SP0 - GRAB)
             th = yaw0; lift = 0.4 + 2.0 * sm(u); tilt = -20 * u
         else:
-            i = f - SP0; th = thetas[f]; k = i / n
+            i = f - SP0; th = theta_at(f); k = i / n
             lift = 2.4 + 1.6 * sm(k); tilt = 18 * sm(k) - 4
         dir_ = (math.sin(th * math.pi / 180), 0.0, -math.cos(th * math.pi / 180))
         grip = (cx + dir_[0] * r_grip, 3.0 if f >= SP0 else 1.4 + 1.6 * (f - GRAB) / max(SP0 - GRAB, 1), cz + dir_[2] * r_grip)
@@ -201,7 +211,7 @@ def beat_hammer():
         cell = unwrap(prev, Hr(cen[0], cen[1], cen[2], Rspin(Rbasis(head_dir, front), 0))); prev = cell
         a = f - GRAB
         D.k(f, 'lin', hrp=cell, t=(6 + wobble(a, 6, 5, 20), 0, 0), h=(-30 + wobble(a, 12, 4.4, 14), 0, 0), ra=(-70 + wobble(a, 16, 4, 14), 0, 30), la=(-76 + wobble(a, 16, 4, 14, 1), 0, 36), rl=(0, 0, 4), ll=(0, 0, 4))
-        dpos[f] = cen
+        if abs(f - round(f)) < 1e-9: dpos[int(round(f))] = cen
     # --- release: flies along the tangent (-X) with its last spin, lands far away and slides
     th = thetas[SP1]
     tang = (math.cos(th * math.pi / 180), 0.0, math.sin(th * math.pi / 180))

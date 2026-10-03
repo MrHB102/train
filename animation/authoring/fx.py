@@ -10,6 +10,9 @@ import random
 import rig as rg
 
 
+V2 = False          # set by the v2 pipeline: continuous trails, impact glow / sparks / flash light
+
+
 class FX:
     def __init__(self, cam, actors):
         self.cam = cam
@@ -51,6 +54,10 @@ class FX:
             self.e2(t='rblur', f0=f, f1=f + 2, p=list(p), amt=0.012 * s)
         if ground:
             self.crack(f, (p[0], 0, p[2]), s=1.2 + s * 0.9, seed=self._s())
+        if V2:
+            # hot core flash (lights the fighters for a few frames) + spark burst along the strike direction
+            self.e3(t='glow', clk='real', f0=f, f1=f + (1 if s < 3 else 2), p=list(p), r=0.45 + 0.25 * s, i=0.75, col='#fff1d8', light=0.5 + 0.3 * s)
+            self.e3(t='sparks', clk='real', f0=f, f1=f + 4, p=list(p), n=8 + 6 * s, speed=12 + 5 * s, dir=list(d), seed=self._s(), life=0.26 + 0.05 * s)
         if sfx:
             self.sfx.append((f, kind, s))
 
@@ -81,7 +88,12 @@ class FX:
         self.sfx.append((f0, 'whoosh', 2))
 
     def trail(self, who, bone, tip_local, f0, f1, col='#ffffff', w=0.18, a=0.9, k=3):
-        """limb-tip motion streak: a short ribbon through the last k frame positions (a stepped smear)"""
+        """limb-tip motion streak: a short ribbon through the last k frame positions (a stepped smear).
+        v2: one continuous ribbon event that the renderer rebuilds every output frame from the limb's real path"""
+        if V2:
+            import r6
+            self.e3(t='trail', c=who, part=r6.SHORT[bone], tip=list(tip_local), f0=f0 - 0.6, f1=f1 + 0.6, len=min(2.4, 0.75 * k + 0.4), w=w, col=col, a=a)
+            return
         act = self.A[who]
         for f in range(f0, f1 + 1):
             for j in range(k):

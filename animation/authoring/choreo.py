@@ -278,7 +278,7 @@ def contact(f, att, limb, tgt, bone, local, slack=0.12, name='', tip=(0.0, -1.0,
     CONTACTS.append(dict(f=f, att=att, limb=limb, tgt=tgt, bone=bone, local=local, slack=slack, name=name, tip=tip, air=air, win=win))
 
 
-def solve_contacts(verbose=True, passes=3):
+def solve_contacts(verbose=True, passes=3, chase=True, frames=None):
     """Make every strike tip touch its target on the exact impact frame: re-solve the limb by IK and, when the target is out of
     reach, step the attacker's root toward it (keys f-1..f+1) so the stride, not a stretched arm, closes the distance."""
     def gap_for(c):
@@ -290,12 +290,13 @@ def solve_contacts(verbose=True, passes=3):
     for _ in range(passes):
         for c in CONTACTS:
             f = c['f']; a = c['att']
+            if frames is not None and f not in frames: continue
             for it in range(3):
                 w, w2 = gap_for(c)
                 res = a.aim(f, c['limb'], w2, tip=c['tip'])
                 tip = a.rig.point(f, c['limb'], c['tip'])
                 g = rg.sub(w2, tip)
-                if rg.norm(g) < 0.04: break
+                if rg.norm(g) < 0.04 or not chase: break
                 keys = [k for k in range(f - c['win'], f + c['win'] + 1) if float(k) in a.clip['keys']]
                 a.nudge_root(keys, dx=g[0] * 0.85, dy=(g[1] * 0.85 if c['air'] else 0.0), dz=g[2] * 0.85)
     out = []

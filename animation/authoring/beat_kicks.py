@@ -101,9 +101,9 @@ def beat_flurry():
     px = 20.5
     P.k(125, 'out', hrp=H(px + 1.0, 0.1, PZ, YPC, pitch=18), t=(8, 30, 0), h=(-6, -20), ra=(-20, 0, 10), la=(70, 0, 10), ll=(46, 0, 8), rl=(-40, 0, 12))
     # (f128) slide-sweep: drop low, supporting hand on the floor, leg whips round at shin height
-    P.k(KS - 1, 'in', hrp=H(px + 1.6, 0, PZ, YPC, pitch=6), t=(44, -24, 0, 0, -1.2), h=(-18, 18), ra=(24, 0, -2), la=(80, 0, 54), ll=(66, 0, 12), rl=(92, 0, 72))
-    P.k(KS, 'lin', hrp=H(px + 2.2, 0, PZ, YPC, pitch=8), t=(46, -30, 0, 0, -1.3), ra=(20, 0, -4), rl=(92, 0, -10))
-    P.k(KS + 1, 'out', hrp=H(px + 2.4, 0, PZ, YPC, pitch=4), t=(40, -10, 0, 0, -1.2), rl=(88, 0, -30))
+    P.k(KS - 1, 'in', hrp=H(px + 0.6, 0, PZ, YPC, pitch=6), t=(44, -24, 0, 0, -1.2), h=(-18, 18), ra=(24, 0, -2), la=(80, 0, 54), ll=(66, 0, 12), rl=(92, 0, 72))
+    P.k(KS, 'lin', hrp=H(px + 1.1, 0, PZ, YPC, pitch=8), t=(46, -30, 0, 0, -1.3), ra=(20, 0, -4), rl=(92, 0, -10))
+    P.k(KS + 1, 'out', hrp=H(px + 1.5, 0, PZ, YPC, pitch=4), t=(40, -10, 0, 0, -1.2), rl=(88, 0, -30))
     # spring into a front flip carrying P over the hovering dummy; heel drops on its belly at f134
     flips = [(KS + 2, 1.0, 0, 'out'), (KS + 3, 3.4, 100, 'lin'), (KS + 4, 5.0, 190, 'lin'), (KS + 5, 5.4, 262, 'lin'), (KF, 4.9, 318, 'lin'), (KF + 1, 3.0, 352, 'out')]
     for f, y, pit, e in flips:

@@ -139,6 +139,29 @@ function skyMaterial(sunDir) {
 function softDisc() {
   return paint(128, 128, (g, w, h) => { const gr = g.createRadialGradient(64, 64, 0, 64, 64, 64); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(.45, 'rgba(255,255,255,.55)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, h); });
 }
+function glowTex() {   // hot core + wide soft halo + faint 4-point star
+  return paint(256, 256, (g, w, h) => {
+    const c = w / 2; let gr = g.createRadialGradient(c, c, 0, c, c, c);
+    gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.08, 'rgba(255,255,255,0.95)'); gr.addColorStop(0.25, 'rgba(255,255,255,0.35)'); gr.addColorStop(0.6, 'rgba(255,255,255,0.08)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = gr; g.fillRect(0, 0, w, h);
+    g.globalCompositeOperation = 'lighter';
+    for (const [sx, sy] of [[1, 0.035], [0.035, 1]]) { gr = g.createRadialGradient(c, c, 0, c, c, c); gr.addColorStop(0, 'rgba(255,255,255,0.7)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+      g.save(); g.translate(c, c); g.scale(sx, sy); g.fillStyle = gr; g.beginPath(); g.arc(0, 0, c, 0, 7); g.fill(); g.restore(); }
+  });
+}
+function puffTex(seed) {  // soft billowy smoke puff (fbm-modulated disc)
+  return paint(256, 256, (g, w, h) => {
+    const r = mulberry32(seed); const im = g.createImageData(w, h); const d = im.data;
+    const oct = [[4, 0.5], [8, 0.27], [16, 0.15], [32, 0.08]].map(([f, a]) => ({ f, a, ph: Array.from({ length: 6 }, () => r() * 6.28) }));
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const u = x / w - 0.5, v = y / h - 0.5; const rad = Math.sqrt(u * u + v * v) * 2;
+      let n = 0; for (const o of oct) n += o.a * (0.5 + 0.25 * Math.sin(u * o.f * 6.28 + o.ph[0] + Math.sin(v * o.f * 3.1 + o.ph[1])) + 0.25 * Math.sin(v * o.f * 6.28 + o.ph[2] + Math.sin(u * o.f * 2.7 + o.ph[3])));
+      const a = Math.max(0, Math.min(1, (1 - rad * (1.05 - 0.35 * n)) * 1.6)) * (0.55 + 0.45 * n);
+      const i = (y * w + x) * 4; const sh = 0.82 + 0.18 * (0.5 - v); d[i] = 255 * sh; d[i + 1] = 255 * sh; d[i + 2] = 255 * sh; d[i + 3] = 255 * a * a * (3 - 2 * a);
+    }
+    g.putImageData(im, 0, 0);
+  });
+}
 function streakTex() {
   return paint(256, 32, (g, w, h) => { const gr = g.createLinearGradient(0, 0, w, 0); gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(.7, 'rgba(255,255,255,.9)'); gr.addColorStop(1, 'rgba(255,255,255,1)'); g.fillStyle = gr; g.fillRect(0, 0, w, h);
     const v = g.createLinearGradient(0, 0, 0, h); v.addColorStop(0, 'rgba(0,0,0,1)'); v.addColorStop(.5, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,1)'); g.globalCompositeOperation = 'destination-out'; g.fillStyle = v; g.fillRect(0, 0, w, h); });
@@ -182,6 +205,8 @@ class Pool {
 export class Stage {
   constructor(shot, opts) {
     this.shot = shot; this.frames = shot.frames;
+    // v2 timeline: output frames (shot.fps, e.g. 120) show story frame tau[n] (18 fps authoring grid). v1 shots: tau = n.
+    this.tau = shot.tau || null; this.storyFps = shot.story_fps || shot.fps; this.BASE = shot.fps / this.storyFps;
     const scale = opts.scale || 1; this.W = Math.round(shot.width * scale); this.H = Math.round(shot.height * scale);
     const r = this.renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true, powerPreference: 'high-performance' });
     r.setPixelRatio(1); r.setSize(this.W, this.H); r.outputColorSpace = SRGB;
@@ -211,7 +236,7 @@ export class Stage {
     const s = this.scene;
     const sky = new THREE.Mesh(new THREE.SphereGeometry(900, 48, 24), skyMaterial(this.sunDir)); sky.renderOrder = -10; s.add(sky); this.sky = sky;
     const ft = floorTexture(); ft.wrapS = ft.wrapT = THREE.RepeatWrapping; ft.repeat.set(30, 30); ft.anisotropy = 16;
-    const floor = new THREE.Mesh(new THREE.PlaneGeometry(1000, 1000), new THREE.MeshStandardMaterial({ map: ft, roughness: 0.38, metalness: 0.05, envMapIntensity: 0 }));
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(1000, 1000), new THREE.MeshStandardMaterial({ map: ft, roughness: 0.6, metalness: 0.0, envMapIntensity: 0 }));
     floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; s.add(floor); this.floor = floor;
     // distant set pieces for parallax / depth (billboards and blocks, like a Roblox test place)
     const bm = new THREE.MeshStandardMaterial({ color: 0xdfe8f3, roughness: 0.9 }); const dk = new THREE.MeshStandardMaterial({ color: 0x1b2433, roughness: 0.7 });
@@ -237,10 +262,14 @@ export class Stage {
   }
 
   buildFxPools() {
-    const s = this.scene; const disc = softDisc(); this.tex = { disc, streak: streakTex(), wall: wallTex(), cracks: [crackTex(5), crackTex(17), crackTex(29), crackTex(41)] };
+    const s = this.scene; const disc = softDisc(); this.tex = { disc, streak: streakTex(), wall: wallTex(), cracks: [crackTex(5), crackTex(17), crackTex(29), crackTex(41)], glow: glowTex(), puffs: [puffTex(3), puffTex(9), puffTex(21)] };
     const boxG = new THREE.BoxGeometry(1, 1, 1);
+    // after-image: flat inner tint + bright fresnel rim (reads as light, not as a grey copy)
+    const rimVS = 'varying vec3 vN; varying vec3 vV; varying vec3 vW; void main(){ vec4 w = modelMatrix * vec4(position,1.0); vW = w.xyz; vN = normalize(mat3(modelMatrix) * normal); vV = normalize(cameraPosition - w.xyz); gl_Position = projectionMatrix * viewMatrix * w; }';
     this.ghostPool = new Pool(s, () => {
-      const g = new THREE.Group(); const m = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5, depthWrite: false, fog: false });
+      const g = new THREE.Group(); const m = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, fog: false, blending: THREE.AdditiveBlending,
+        uniforms: { col: { value: new THREE.Color(1, 1, 1) }, alpha: { value: 0.5 } }, vertexShader: rimVS,
+        fragmentShader: 'uniform vec3 col; uniform float alpha; varying vec3 vN; varying vec3 vV; void main(){ float fr = pow(1.0 - abs(dot(normalize(vN), normalize(vV))), 2.2); gl_FragColor = vec4(col * (0.35 + 1.4 * fr), alpha * (0.45 + 0.9 * fr)); }' });
       g.userData.mat = m; g.userData.parts = {};
       for (const b of PARTS) { const mesh = new THREE.Mesh(boxG, m); mesh.matrixAutoUpdate = false; mesh.renderOrder = 20; g.add(mesh); g.userData.parts[b] = mesh; }
       return g;
@@ -264,8 +293,19 @@ export class Stage {
           float glow = (0.35 + 0.65 * t) * m; if (m <= 0.001) discard; gl_FragColor = vec4(col * (0.8 + 0.8 * t), glow * alpha); }`,
     })));
     this.streakPool = new Pool(s, () => new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: this.tex.streak, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false })));
+    // energy aura: back-face shell with upward-flowing flame noise and a hot rim
     this.auraPool = new Pool(s, () => {
-      const g = new THREE.Group(); const m = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.4, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.BackSide, fog: false });
+      const g = new THREE.Group(); const m = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.BackSide, fog: false,
+        uniforms: { col: { value: new THREE.Color(1, 0.3, 0.3) }, alpha: { value: 0.4 }, time: { value: 0 } }, vertexShader: rimVS,
+        fragmentShader: `uniform vec3 col; uniform float alpha, time; varying vec3 vN; varying vec3 vV; varying vec3 vW;
+          float h(vec3 p){ return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
+          float n3(vec3 p){ vec3 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+            return mix(mix(mix(h(i), h(i + vec3(1,0,0)), f.x), mix(h(i + vec3(0,1,0)), h(i + vec3(1,1,0)), f.x), f.y),
+                       mix(mix(h(i + vec3(0,0,1)), h(i + vec3(1,0,1)), f.x), mix(h(i + vec3(0,1,1)), h(i + vec3(1,1,1)), f.x), f.y), f.z); }
+          void main(){ vec3 p = vW * 1.7 - vec3(0.0, time * 3.2, 0.0); float n = n3(p) * 0.6 + n3(p * 2.1) * 0.3 + n3(p * 4.3) * 0.1;
+            float fr = pow(1.0 - abs(dot(normalize(vN), normalize(vV))), 1.6); float flame = smoothstep(0.35, 0.85, n);
+            vec3 c = mix(col, vec3(1.0, 0.95, 0.85), flame * 0.55);
+            gl_FragColor = vec4(c * (0.6 + 1.2 * flame), alpha * (0.25 + 0.85 * flame) * (0.55 + 0.6 * fr)); }` });
       g.userData.mat = m; g.userData.parts = {};
       for (const b of PARTS) { const mesh = new THREE.Mesh(boxG, m); mesh.matrixAutoUpdate = false; mesh.renderOrder = 19; g.add(mesh); g.userData.parts[b] = mesh; }
       return g;
@@ -276,7 +316,36 @@ export class Stage {
       const cap = new THREE.Mesh(boxG, new THREE.MeshStandardMaterial({ color: 0xc9d2e4, roughness: 0.8 })); cap.scale.set(1.04, 0.05, 1.04); cap.position.y = 0.5; m.add(cap);
       return m;
     });
-    this.pools = [this.pillarPool, this.ghostPool, this.ringPool, this.wallPool, this.crackPool, this.dustPool, this.debrisPool, this.slashPool, this.streakPool, this.auraPool];
+    // continuous limb trails: a camera-facing triangle strip with per-vertex alpha
+    this.trailPool = new Pool(s, () => {
+      const K = 18; const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.BufferAttribute(new Float32Array((K + 1) * 6), 3));
+      g.setAttribute('alpha', new THREE.BufferAttribute(new Float32Array((K + 1) * 2), 1));
+      const idx = []; for (let k = 0; k < K; k++) { const a = 2 * k; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); } g.setIndex(idx);
+      const m = new THREE.Mesh(g, new THREE.ShaderMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false,
+        uniforms: { col: { value: new THREE.Color(1, 1, 1) } },
+        vertexShader: 'attribute float alpha; varying float vA; void main(){ vA = alpha; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+        fragmentShader: 'uniform vec3 col; varying float vA; void main(){ gl_FragColor = vec4(col, vA); }' }));
+      m.frustumCulled = false; m.renderOrder = 23; return m;
+    });
+    this.glowPool = new Pool(s, () => { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.tex.glow, transparent: true, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending, fog: false })); sp.renderOrder = 30; return sp; });
+    this.emberPool = new Pool(s, () => { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: disc, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false })); sp.renderOrder = 24; return sp; });
+    // flash lights for impacts: always present (fixed light count = no shader recompiles), intensity 0 when idle
+    this.flashLights = [0, 1, 2].map(() => { const L = new THREE.PointLight(0xffffff, 0, 14, 2); s.add(L); return L; });
+    this.pools = [this.pillarPool, this.ghostPool, this.ringPool, this.wallPool, this.crackPool, this.dustPool, this.debrisPool, this.slashPool, this.streakPool, this.auraPool, this.trailPool, this.glowPool, this.emberPool];
+  }
+
+  af2n(af) {
+    const T = this.tau; const last = this.frames - 1;
+    if (!T) return Math.max(0, Math.min(last, Math.round(af)));
+    if (af <= T[0]) return 0; if (af >= T[last]) return last;
+    let lo = 0, hi = last;
+    while (hi - lo > 1) { const m = (lo + hi) >> 1; if (T[m] <= af) lo = m; else hi = m; }
+    return (af - T[lo]) / Math.max(1e-9, T[hi] - T[lo]) < 0.5 ? lo : hi;
+  }
+  partPoint(cid, b, n, local) {
+    const a = this.shot.chars[cid].parts[b][n];
+    return new THREE.Vector3(a[0] + a[3] * local[0] + a[4] * local[1] + a[5] * local[2], a[1] + a[6] * local[0] + a[7] * local[1] + a[8] * local[2], a[2] + a[9] * local[0] + a[10] * local[1] + a[11] * local[2]);
   }
 
   setPartMatrices(meshes, data, f, scaleMul = 1, pad = 0) {
@@ -301,18 +370,24 @@ export class Stage {
   }
 
   // ------------------------------------------------------------ FX
-  applyFx(f) {
+  applyFx(n, tau) {
     for (const p of this.pools) p.reset();
-    const cam = this.camera;
+    this.lightUse = 0;
     for (const e of this.fx) {
-      if (e.f0 > f) break;
-      const e1 = e.f1 === undefined ? e.f0 : e.f1;
-      if (f > e1 && !(e.t === 'crack' && e.keep)) continue;
-      const u = e1 > e.f0 ? clamp01((f - e.f0) / (e1 - e.f0)) : 0;
-      const age = (f - e.f0) / this.shot.fps;
+      if (e.f0 > tau + 1e-6) break;
+      // story-clock effects follow slow motion / hit-stops; real-clock ones (flashes, stars, sparks) always play at speed
+      const f = e.clk === 'real' ? e.f0 + (n - e.n0) / this.BASE : tau;
+      if (f < e.f0 - 1e-6) continue;
+      const e1 = (e.f1 === undefined ? e.f0 : e.f1) + 1;          // continuous: an event lives on [f0, f1 + 1)
+      if (f >= e1 && !(e.t === 'crack' && e.keep)) continue;
+      const u = clamp01((f - e.f0) / (e1 - e.f0));
+      const age = (f - e.f0) / this.storyFps;
       switch (e.t) {
         case 'ghost': this.fxGhost(e, f, u); break;
-        case 'aura': this.fxAura(e, f, u); break;
+        case 'aura': this.fxAura(e, f, u, n); break;
+        case 'trail': this.fxTrail(e, f, u); break;
+        case 'glow': this.fxGlow(e, f, u); break;
+        case 'sparks': this.fxSparks(e, f, age); break;
         case 'ring': this.fxRing(e, u); break;
         case 'wall': this.fxWall(e, u); break;
         case 'debris': this.fxDebris(e, f, age); break;
@@ -326,19 +401,85 @@ export class Stage {
   }
   fxGhost(e, f, u) {
     const d = this.shot.chars[e.c];
-    (e.lags || [2, 4, 6]).forEach((lag, i) => {
-      const ff = Math.max(0, f - lag); const g = this.ghostPool.get(); g.userData.mat.color.set(e.col || '#9fd0ff');
-      g.userData.mat.opacity = 0.72 * (e.a ?? 0.5) * Math.pow(e.decay ?? 0.7, i) * (1 - (e.fade ? u * 0.6 : 0));
+    const c0 = new THREE.Color(e.col || '#9fd0ff'), c1 = new THREE.Color(e.col2 || '#b48cff');
+    const lags = e.lags || [2, 4, 6];
+    lags.forEach((lag, i) => {
+      const ff = this.af2n(f - lag); const g = this.ghostPool.get(); const un = g.userData.mat.uniforms;
+      un.col.value.copy(c0).lerp(c1, lags.length > 1 ? i / (lags.length - 1) : 0);
+      un.alpha.value = 0.8 * (e.a ?? 0.5) * Math.pow(e.decay ?? 0.7, i) * (1 - (e.fade ? u * 0.65 : 0));
       this.setPartMatrices(g.userData.parts, d, ff);
       for (const b of PARTS) { const m = g.userData.parts[b]; const sz = SIZE[b]; m.matrix.scale(new THREE.Vector3(sz[0], sz[1], sz[2])); }
     });
   }
-  fxAura(e, f, u) {
-    const d = this.shot.chars[e.c]; const g = this.auraPool.get(); g.userData.mat.color.set(e.col || '#ff4050');
-    const pulse = 0.75 + 0.25 * Math.sin(f * 1.7); g.userData.mat.opacity = (e.a ?? 0.5) * pulse * (e.ramp ? clamp01(u * 2) : 1);
-    this.setPartMatrices(g.userData.parts, d, f);
-    const k = e.scale || 1.22;
-    for (const b of PARTS) { const m = g.userData.parts[b]; const sz = SIZE[b]; m.matrix.scale(new THREE.Vector3(sz[0] * k, sz[1] * k, sz[2] * k)); }
+  fxAura(e, f, u, n) {
+    const d = this.shot.chars[e.c]; const nn = this.af2n(f);
+    const t = n / this.shot.fps;
+    for (let layer = 0; layer < 2; layer++) {
+      const g = this.auraPool.get(); const un = g.userData.mat.uniforms;
+      un.col.value.set(e.col || '#ff4050'); un.time.value = t + layer * 3.1;
+      un.alpha.value = (e.a ?? 0.5) * (layer ? 0.55 : 1.0) * (0.85 + 0.15 * Math.sin(t * 2 * Math.PI * 3.1)) * (e.ramp ? clamp01(u * 2) : 1);
+      this.setPartMatrices(g.userData.parts, d, nn);
+      const k = (e.scale || 1.22) * (layer ? 1.32 : 1.0);
+      for (const b of PARTS) { const m = g.userData.parts[b]; const sz = SIZE[b]; m.matrix.scale(new THREE.Vector3(sz[0] * k, sz[1] * k, sz[2] * k)); }
+    }
+    // embers rising from the body
+    const r = mulberry32((e.seed || 3) * 131); const torso = this.partPoint(e.c, 'Torso', nn, [0, 0, 0]);
+    const nE = Math.round((e.embers ?? 26) * (e.ramp ? clamp01(u * 2) : 1));
+    for (let i = 0; i < nE; i++) {
+      const ph = r(), sp = 1.6 + r() * 2.2, ang = r() * 6.283, rad = 0.6 + r() * 1.3;
+      const life = 0.7 + r() * 0.6; const a = ((t * (1 / life) + ph) % 1);
+      const o = this.emberPool.get();
+      o.position.set(torso.x + Math.cos(ang + a * 1.5) * rad * (1 - a * 0.4), torso.y - 2.6 + a * sp * 3.2, torso.z + Math.sin(ang + a * 1.5) * rad * (1 - a * 0.4));
+      const sz = 0.11 + 0.1 * (1 - a); o.scale.set(sz, sz * 2.2, 1); o.material.rotation = 0;
+      o.material.color.set(e.col || '#ff4050'); o.material.opacity = (e.a ?? 0.5) * 1.6 * Math.sin(Math.PI * a);
+    }
+  }
+  fxTrail(e, f, u) {
+    // continuous ribbon through the limb tip's recent path (story time), tapering and fading toward the tail
+    const K = 18; const len = e.len ?? 1.6; const m = this.trailPool.get();
+    const pos = m.geometry.attributes.position.array, al = m.geometry.attributes.alpha.array;
+    const camPos = this.camera.position; const pts = [];
+    for (let k = 0; k <= K; k++) { const n = this.af2n(f - len * k / K); pts.push(this.partPoint(e.c, e.part, n, e.tip || [0, -1, 0])); }
+    let total = 0; for (let k = 1; k <= K; k++) total += pts[k].distanceTo(pts[k - 1]);
+    const fadeIn = clamp01((f - e.f0) / 0.35), fadeOut = 1 - clamp01((u - 0.7) / 0.3);
+    for (let k = 0; k <= K; k++) {
+      const p = pts[k]; const q = pts[Math.min(K, k + 1)], r0 = pts[Math.max(0, k - 1)];
+      const dir = new THREE.Vector3().subVectors(r0, q); if (dir.lengthSq() < 1e-8) dir.set(0, 1, 0); dir.normalize();
+      const view = new THREE.Vector3().subVectors(camPos, p).normalize();
+      const side = new THREE.Vector3().crossVectors(dir, view).normalize();
+      const w = (e.w ?? 0.2) * (1 - k / K) * (total > 0.4 ? 1 : total / 0.4);
+      pos.set([p.x + side.x * w, p.y + side.y * w, p.z + side.z * w, p.x - side.x * w, p.y - side.y * w, p.z - side.z * w], k * 6);
+      const a = (e.a ?? 0.9) * Math.pow(1 - k / K, 1.4) * fadeIn * fadeOut * (total > 0.25 ? 1 : 0);
+      al[k * 2] = a; al[k * 2 + 1] = a;
+    }
+    m.geometry.attributes.position.needsUpdate = true; m.geometry.attributes.alpha.needsUpdate = true; m.geometry.computeBoundingSphere();
+    m.material.uniforms.col.value.set(e.col || '#ffffff');
+  }
+  fxGlow(e, f, u) {
+    const o = this.glowPool.get(); const k = 1 - u;
+    const I = (e.i ?? 1.0) * Math.pow(k, 3.0);
+    o.position.set(...e.p); const r = (e.r ?? 1.5) * (0.45 + 0.4 * Math.sqrt(u)); o.scale.set(r * 2, r * 2, 1);
+    o.material.color.set(e.col || '#fff2d6'); o.material.opacity = Math.min(1, I);
+    if (e.light && this.lightUse < this.flashLights.length) {
+      const L = this.flashLights[this.lightUse++]; L.position.set(...e.p); L.color.set(e.col || '#fff2d6'); L.intensity = e.light * I * 18; L.distance = 10;
+    }
+  }
+  fxSparks(e, f, age) {
+    const r = mulberry32((e.seed || 1) * 7907); const life = e.life ?? 0.38; if (age > life * 1.6) return;
+    const d = new THREE.Vector3(...(e.dir || [0, 0, 0]));
+    for (let i = 0; i < e.n; i++) {
+      const v = new THREE.Vector3(r() * 2 - 1, r() * 2 - 1, r() * 2 - 1).normalize().multiplyScalar((e.speed ?? 18) * (0.35 + r() * 0.65)).addScaledVector(d, (e.speed ?? 18) * 0.6 * r());
+      const li = life * (0.5 + r() * 0.7); if (age > li) continue;
+      const drag = Math.exp(-age * 3.2); const t = (1 - drag) / 3.2;
+      const p = new THREE.Vector3(...e.p).addScaledVector(v, t); p.y -= 0.5 * 26 * age * age;
+      const vel = v.clone().multiplyScalar(drag); vel.y -= 26 * age;
+      const m = this.streakPool.get(); const tail = p.clone().addScaledVector(vel, -0.028 - 0.02 * r());
+      const axis = new THREE.Vector3().subVectors(p, tail); const ln = Math.max(axis.length(), 0.05); axis.normalize();
+      const mid = p.clone().add(tail).multiplyScalar(0.5); const view = this.camera.position.clone().sub(mid).normalize();
+      const side = new THREE.Vector3().crossVectors(axis, view).normalize(); const nrm = new THREE.Vector3().crossVectors(axis, side).normalize();
+      m.matrix.makeBasis(axis.multiplyScalar(ln), side.multiplyScalar(0.05 + 0.04 * r()), nrm); m.matrix.setPosition(mid); m.matrixAutoUpdate = false; m.matrixWorldNeedsUpdate = true;
+      m.material.color.set(r() < 0.35 ? (e.col2 || '#ffd27a') : (e.col || '#ffffff')); m.material.opacity = 1 - age / li;
+    }
   }
   fxRing(e, u) {
     const m = this.ringPool.get(); const k = (e.ease === 'in' ? easeIn(u) : easeOut(u)); const r = lerp(e.r0, e.r1, k);
@@ -357,18 +498,23 @@ export class Stage {
     m.material.opacity = e.keep ? (e.fadeAt && f > e.fadeAt ? clamp01(1 - (f - e.fadeAt) / 14) : 1) : 1 - easeIn(u) * 0.8;
   }
   fxDust(e, f, age, u) {
-    const r = mulberry32((e.seed || 1) * 7919);
+    // billowing puffs: expand fast then drift and roll, lit side warmer, fade with a soft tail
+    const r = mulberry32((e.seed || 1) * 7919); const life = (e.f1 - e.f0 + 9) / this.storyFps;
+    const base = new THREE.Color(e.col || '#cfd6df'), warm = new THREE.Color('#fff4e6'), cool = new THREE.Color('#8e9db3');
     for (let i = 0; i < e.n; i++) {
-      const a = r() * Math.PI * 2, sp = (e.spread || 3) * (0.3 + r() * 0.7), rise = (e.rise ?? 1.5) * (0.4 + r() * 0.6), sz0 = (e.size || 1.2) * (0.6 + r() * 0.8), dl = r() * 0.15;
+      const a = r() * Math.PI * 2, sp = (e.spread || 3) * (0.3 + r() * 0.7), rise = (e.rise ?? 1.5) * (0.4 + r() * 0.6), sz0 = (e.size || 1.2) * (0.6 + r() * 0.8), dl = r() * 0.12;
+      const lit = r(), spin = (r() - 0.5) * 1.6, tex = (r() * 3) | 0;
       const t = Math.max(0, age - dl); if (age < dl) continue;
-      const drag = 1 - Math.exp(-t * 4.0);
+      const drag = 1 - Math.exp(-t * 4.5);
       const o = this.dustPool.get(); const dir = e.dir ? new THREE.Vector3(...e.dir) : null;
       let px = e.p[0] + Math.cos(a) * sp * drag * 0.6, pz = e.p[2] + Math.sin(a) * sp * drag * 0.6;
       if (dir) { px += dir.x * (e.drift || 0) * t * (0.5 + r()); pz += dir.z * (e.drift || 0) * t * (0.5 + r()); }
-      o.position.set(px, e.p[1] + 0.2 + rise * drag * 0.6 + sz0 * 0.25, pz);
-      const sz = sz0 * (0.6 + 1.6 * drag); o.scale.set(sz, sz, 1);
-      o.material.color.set(e.col || '#cfd6df'); o.material.opacity = (e.a ?? 0.6) * (1 - easeIn(clamp01(t / ((e.f1 - e.f0 + 6) / this.shot.fps)))) ;
-      o.material.rotation = a;
+      o.position.set(px, e.p[1] + 0.2 + rise * drag * 0.6 + sz0 * 0.25 + t * 0.35, pz);
+      const sz = sz0 * (0.55 + 1.5 * Math.sqrt(drag) + 0.25 * t); o.scale.set(sz, sz, 1);
+      o.material.map = this.tex.puffs[tex];
+      o.material.color.copy(base).lerp(lit > 0.5 ? warm : cool, 0.35 * Math.abs(lit - 0.5) * 2);
+      o.material.opacity = (e.a ?? 0.6) * 1.15 * clamp01(t / 0.04) * (1 - easeIn(clamp01(t / life)));
+      o.material.rotation = a + spin * t;
     }
   }
   fxDebris(e, f, age) {
@@ -435,10 +581,26 @@ export class Stage {
     }
   }
   render(i, pass) {
-    const f = Math.max(0, Math.min(this.frames - 1, i | 0));
-    this.applyChars(f); this.applyCamera(f); this.applyLights(f); this.applyFx(f); this.applyTags(f);
+    const n = Math.max(0, Math.min(this.frames - 1, i | 0)); const tau = this.tau ? this.tau[n] : n;
+    for (const L of this.flashLights) L.intensity = 0;
+    this.applyChars(n); this.applyCamera(n); this.applyLights(n); this.applyFx(n, tau); this.applyTags(n);
     this.scene.updateMatrixWorld(true);
     this.renderer.render(this.scene, this.camera);
-    return this.renderer.domElement.toDataURL('image/png');
+    const color = this.renderer.domElement.toDataURL('image/png');
+    if (pass !== 'both') return color;
+    // depth pass for the depth-of-field in post: 8-bit log depth (0.3 .. 600 studs), effects / sky / sprites hidden
+    if (!this.depthMat) this.depthMat = new THREE.ShaderMaterial({
+      vertexShader: 'varying float vz; void main(){ vec4 mv = modelViewMatrix * vec4(position, 1.0); vz = -mv.z; gl_Position = projectionMatrix * mv; }',
+      fragmentShader: 'varying float vz; void main(){ float v = clamp(log(max(vz, 0.3) / 0.3) / log(2000.0), 0.0, 1.0); gl_FragColor = vec4(v, v, v, 1.0); }' });
+    const hidden = [];
+    this.scene.traverse(o => { if (o.visible && (o.isSprite || o.isLight || o === this.sky || (o.material && !Array.isArray(o.material) && o.material.transparent))) { hidden.push(o); o.visible = false; } });
+    const fog = this.scene.fog; this.scene.fog = null; this.scene.overrideMaterial = this.depthMat;
+    const cc = this.renderer.getClearColor(new THREE.Color()); const ca = this.renderer.getClearAlpha(); const sm = this.renderer.shadowMap.enabled;
+    this.renderer.setClearColor(0xffffff, 1); this.renderer.shadowMap.enabled = false;
+    this.renderer.render(this.scene, this.camera);
+    const depth = this.renderer.domElement.toDataURL('image/png');
+    this.scene.overrideMaterial = null; this.scene.fog = fog; this.renderer.setClearColor(cc, ca); this.renderer.shadowMap.enabled = sm;
+    for (const o of hidden) o.visible = true;
+    return { color, depth };
   }
 }
