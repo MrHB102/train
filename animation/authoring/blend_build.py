@@ -758,9 +758,13 @@ def main():
     build_scene(S)
     err = verify(S)
     print('verify: max part-centre difference between the .blend (depsgraph) and the rendered motion: %.5f studs' % err)
+    for sc_ in bpy.data.scenes:
+        sc_.frame_set(0)
     os.makedirs(BLEND_DIR, exist_ok=True)
     path = os.path.join(BLEND_DIR, 'MrHB_fight_v2.blend')
     bpy.context.window_manager  # noqa
+    bpy.ops.wm.save_as_mainfile(filepath=path, compress=True)
+    bpy.ops.file.make_paths_relative()            # overlay image runs: //overlay/... (works wherever the folder is copied)
     bpy.ops.wm.save_as_mainfile(filepath=path, compress=True)
     print('saved', path, os.path.getsize(path) // 1024, 'KB')
     return S, err

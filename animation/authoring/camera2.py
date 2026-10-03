@@ -22,7 +22,6 @@ import cam as camlib
 import rig as rg
 
 FPS = 120.0
-DEBUG = {}
 
 
 def _spring(x, v, target, w, dt):
@@ -167,7 +166,6 @@ def build(warp, bake, verbose=True):
             Of = o_dir * (1 - g) + (O / max(np.linalg.norm(O), 1e-6)) * g
             dist_f = float(dd[0]) * (1 - g) + dE * g
             Pf = Lf + Of / max(np.linalg.norm(Of), 1e-6) * dist_f
-            DEBUG[n] = (g, float(dd[0]), dE, worst)
             out[n] = [Pf, Lf, fov, roll, af, s, t_imm, action]
     # ---- layers in real time: handheld, shakes, punches; then focus and safety
     shakes = [(warp.out(f), amp, rdeg, dec / 18.0, seed) for (f, amp, rdeg, dec, seed) in C.CAM.shakes]

@@ -513,7 +513,8 @@ export class Stage {
       const sz = sz0 * (0.55 + 1.5 * Math.sqrt(drag) + 0.25 * t); o.scale.set(sz, sz, 1);
       o.material.map = this.tex.puffs[tex];
       o.material.color.copy(base).lerp(lit > 0.5 ? warm : cool, 0.35 * Math.abs(lit - 0.5) * 2);
-      o.material.opacity = (e.a ?? 0.6) * 1.15 * clamp01(t / 0.04) * (1 - easeIn(clamp01(t / life)));
+      const near = clamp01((o.position.distanceTo(this.camera.position) - 1.5 - sz * 0.5) / 5.0);   // soft fade near the lens
+      o.material.opacity = (e.a ?? 0.6) * 1.15 * clamp01(t / 0.04) * (1 - easeIn(clamp01(t / life))) * near * near;
       o.material.rotation = a + spin * t;
     }
   }

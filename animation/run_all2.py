@@ -105,11 +105,11 @@ def stage_encode():
     m60 = os.path.join(OUT, '@Mr_HB_fight_60fps.mp4')
     base = ['-c:v', 'libx264', '-preset', 'medium', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', '-profile:v', 'high']
     subprocess.check_call(['ffmpeg', '-y', '-v', 'error', '-framerate', '120', '-i', src, '-i', aud, '-map', '0:v', '-map', '1:a', *base,
-                           '-crf', '20', '-maxrate', '14M', '-bufsize', '28M', '-level', '5.2', '-c:a', 'aac', '-b:a', '192k', '-shortest', m120])
-    # 60 fps: every output frame is the average of two consecutive 120 fps frames (a 180-degree shutter's motion blur)
+                           '-crf', '20', '-maxrate', '14M', '-bufsize', '28M', '-level', '5.2', '-c:a', 'aac', '-b:a', '192k', m120])
+    # 60 fps: each frame = 3/4 of the current 120 fps frame + 1/4 of the previous one (crisp image with a light motion trail)
     subprocess.check_call(['ffmpeg', '-y', '-v', 'error', '-framerate', '120', '-i', src, '-i', aud, '-map', '0:v', '-map', '1:a',
-                           '-vf', 'tmix=frames=2:weights=1 1,framestep=2', '-r', '60', *base,
-                           '-crf', '20', '-maxrate', '10M', '-bufsize', '20M', '-c:a', 'aac', '-b:a', '192k', '-shortest', m60])
+                           '-vf', 'tmix=frames=2:weights=1 3,framestep=2', '-r', '60', *base,
+                           '-crf', '20', '-maxrate', '10M', '-bufsize', '20M', '-c:a', 'aac', '-b:a', '192k', m60])
     for f in (m120, m60):
         p = json.loads(subprocess.check_output(['ffprobe', '-v', 'error', '-show_entries', 'stream=codec_type,width,height,r_frame_rate,nb_frames,duration', '-of', 'json', f]))
         print(os.path.basename(f), os.path.getsize(f) // 1024, 'KB', [(s.get('codec_type'), s.get('width'), s.get('height'), s.get('r_frame_rate'), s.get('nb_frames'), s.get('duration')) for s in p['streams']])
@@ -151,7 +151,9 @@ def stage_overlay(workers):
     wm = (np.clip(np.dstack([col, a]), 0, 1) * 255 + 0.5).astype(np.uint8)
     Image.fromarray(cv2.resize(wm, (W // 2, H // 2), interpolation=cv2.INTER_AREA), 'RGBA').save(os.path.join(d, 'watermark.png'))
     n = n_frames()
-    with cf.ProcessPoolExecutor(workers) as ex:
+    import multiprocessing as mp
+    # spawn, not fork: the parent already used OpenCV (its thread pool does not survive a fork)
+    with cf.ProcessPoolExecutor(workers, mp_context=mp.get_context('spawn')) as ex:
         done = [x for x in ex.map(_overlay_one, range(n), chunksize=16) if x is not None]
     tot = sum(os.path.getsize(os.path.join(d, f)) for f in os.listdir(d))
     print('overlay: %d frames with 2D effects, %.1f MB' % (len(done), tot / 1e6))

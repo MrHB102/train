@@ -382,7 +382,7 @@ def direct_outro():
     A(565, 596, lambda f: [P.rig.head(f), P.rig.sole(f, 'l'), P.rig.sole(f, 'r'), D.rig.sole(f, 'l')], [dict(f=565, az=60, el=18, fill=0.55, fov=58, roll=-3, e='io', mind=16), dict(f=595, az=100, el=8, fill=0.6, fov=54, roll=1, mind=14)], lm, 0.6, 'walk-away')
     A(596, 612, lambda f: [P.rig.head(f), P.rig.sole(f, 'l'), P.rig.sole(f, 'r')], [dict(f=596, az=-118, el=-6, fill=0.7, fov=52, roll=-3, e='io', mind=8), dict(f=611, az=-96, el=-8, fill=0.72, fov=46, roll=2, mind=7)], lm, 0.7, 'turn')
     # closing hero shot facing the lens: warm grade, name tag, title
-    A(612, 630, lambda f: [P.rig.head(f), P.rig.sole(f, 'l'), P.rig.sole(f, 'r'), P.rig.fist(f, 'l')], [dict(f=612, az=-90, el=-12, fill=0.74, fov=46, roll=-2, e='out', mind=7), dict(f=629, az=-86, el=-6, fill=0.68, fov=40, roll=0, mind=7)], lm, 0.8, 'hero-end')
+    A(612, 630, lambda f: [P.rig.head(f), P.rig.sole(f, 'l'), P.rig.sole(f, 'r'), P.rig.fist(f, 'l'), P.rig.fist(f, 'r')], [dict(f=612, az=-90, el=-12, fill=0.64, fov=46, roll=-2, e='out', mind=7), dict(f=629, az=-86, el=-6, fill=0.6, fov=40, roll=0, mind=7)], lm, 0.8, 'hero-end')
     FXL.grade(596, 630, sat=1.15, contrast=1.1, vig=0.45, tint=(1.04, 1.0, 0.94), ramp=12)
     tag(606, 629, fade=1)
     FXL.text(614, 630, '@Mr_HB', pos=(0.5, 0.86), size=0.2, col='#ffffff', anim='pop')

@@ -36,6 +36,8 @@ class Post:
         self.cuts = set(shot.get('cuts', []))
         self.ev = fx['events']
         self.chars = fx['chars']
+        self.tags_vis = shot.get('tags', {}).get('P', {}).get('vis')
+        self.head_P = shot['chars']['P']['parts']['Head']
         self.s = W / 1080.0
         self.yy, self.xx = np.mgrid[0:H, 0:W].astype(np.float32)
         # output-frame range of each event
@@ -137,6 +139,16 @@ class Post:
         z = 0.3 * np.exp(dz * math.log(2000.0))
         coc = ap * 15.0 * self.s * np.abs(1.0 - focus / np.maximum(z, 0.3))       # pixels (radius)
         coc = np.minimum(coc, 16.0 * self.s)
+        # the floating name tag is a sprite (not in the depth pass): keep its rectangle in focus
+        tv = self.tags_vis[n] if self.tags_vis else 0.0
+        if tv > 0.01:
+            h = self.head_P[n][:3]; cpos = np.array(c[0:3])
+            k = max(0.5, float(np.linalg.norm(np.array(h) - cpos)) * 0.085) * tv
+            pr = self.project(n, (h[0], h[1] + 1.55 + 0.25 * k, h[2]))
+            if pr:
+                hw, hh = 2.2 * k * pr[3], 0.65 * k * pr[3]
+                m = np.exp(-np.maximum(np.abs(self.xx - pr[0]) / max(hw, 1) - 1, 0) * 6) * np.exp(-np.maximum(np.abs(self.yy - pr[1]) / max(hh, 1) - 1, 0) * 6)
+                coc = coc * (1 - m)
         coc = cv2.GaussianBlur(coc, (0, 0), 2.0 * self.s)                         # soften the transitions at silhouettes
         levels = [0.0, 2.5, 5.0, 9.0, 16.0]
         H, W = im.shape[:2]

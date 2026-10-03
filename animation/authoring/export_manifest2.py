@@ -95,7 +95,7 @@ def write(S, results):
         'deliverables_v2': results.get('deliverables', []),
         'checks_v2': results.get('checks', {}),
         'unresolved_v2': results.get('unresolved', []),
-        'v1': {k: old[k] for k in ('brief', 'tools', 'reference', 'originality', 'beat_sheet') if k in old},
+        'v1': old.get('v1') or {k: old[k] for k in ('brief', 'tools', 'reference', 'originality', 'beat_sheet') if k in old},
     }
     with open(path, 'w') as fh:
         json.dump(m, fh, indent=2, ensure_ascii=False)
