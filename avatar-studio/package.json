@@ -1,0 +1,20 @@
+{
+  "name": "avatar-studio",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Personalizador de avatar feminino (torso + pernas) em three.js — corpo realista, roupas, shaders e física",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "vite build",
+    "preview": "vite preview --host",
+    "assets": "node tools/build-assets.mjs"
+  },
+  "dependencies": {
+    "three": "^0.186.1"
+  },
+  "devDependencies": {
+    "sharp": "^0.34.5",
+    "vite": "^8.3.3"
+  }
+}
