@@ -47,7 +47,7 @@ float freckleSpots(vec3 p, float density) {
     vec3 o = hash33(id);
     float r = 0.15 + 0.11 * hash13(id + 7.7);
     float d = length(c + 0.2 + 0.6 * o - f);
-    m = max(m, smoothstep(r, r * 0.35, d));
+    m = max(m, 1.0 - smoothstep(r * 0.35, r, d));
   }
   return m;
 }
@@ -110,7 +110,7 @@ for (int i = 0; i < ${BLUSH_N}; i++) {
 }
 skinCol = mix(skinCol, skinCol * vec3(1.09, 0.80, 0.78), clamp(redAcc * 0.55 * uRedness, 0.0, 0.9));
 // veias (linhas azul-esverdeadas sutis, mais nas pernas/pés)
-float veinMask = smoothstep(0.1, -0.35, rp.y) * 0.8 + 0.2;
+float veinMask = (1.0 - smoothstep(-0.35, 0.1, rp.y)) * 0.8 + 0.2;
 float vein = smoothstep(0.80, 0.95, texture(uNoise, rp * 11.0 + 0.5).b);
 skinCol = mix(skinCol, skinCol * vec3(0.80, 0.88, 0.96), vein * veinMask * uVeins * 0.55);
 // sardas (mais nos ombros e na parte de cima)
@@ -124,7 +124,7 @@ for (int i = 0; i < ${MOLE_N}; i++) {
   vec4 m = uMole[i];
   if (m.w <= 0.0) continue;
   float d = length(rp - m.xyz);
-  skinCol = mix(skinCol, vec3(0.20, 0.11, 0.08) * (0.6 + 0.4 * dot(uTone, vec3(0.33))), smoothstep(m.w, m.w * 0.55, d) * uMoles);
+  skinCol = mix(skinCol, vec3(0.20, 0.11, 0.08) * (0.6 + 0.4 * dot(uTone, vec3(0.33))), (1.0 - smoothstep(m.w * 0.55, m.w, d)) * uMoles);
 }
 // poros: pequenas cavidades escurecem levemente a cor
 float pit = 1.0 - smoothstep(0.30, 0.52, nA.r);
@@ -136,7 +136,7 @@ for (int i = 0; i < ${NAIL_N}; i++) {
   if (n.w <= 0.0) continue;
   vec3 d = rp - n.xyz;
   d.z *= 0.8;
-  gNail = max(gNail, smoothstep(n.w, n.w * 0.72, length(d)));
+  gNail = max(gNail, 1.0 - smoothstep(n.w * 0.72, n.w, length(d)));
 }
 skinCol = mix(skinCol, uNailColor, gNail * uNails);
 gNail *= uNails;
