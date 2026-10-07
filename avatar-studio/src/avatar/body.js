@@ -15,6 +15,7 @@ export class Body {
     this.values = neutralValues();
     this.dials = neutralDials();
     this.slack = 0; // folga do Extended Range para o repique elástico
+    this.groundLift = 0; // espessura da sola dos sapatos (m)
     this.N = pkg.meta.vertCount;
     this.pos = new Float32Array(this.N * 3); // posições do corpo na pose de repouso (m)
     this.normals = new Float32Array(this.N * 3);
@@ -284,6 +285,13 @@ export class Body {
     let min = Infinity;
     for (let i = 1; i < this.pos.length; i += 3) if (this.pos[i] < min) min = this.pos[i];
     this.floorY = min;
-    this.group.position.y = -min; // os pés sempre apoiam no chão, qualquer que seja o comprimento das pernas
+    this.group.position.y = -min + this.groundLift; // os pés sempre apoiam no chão, qualquer que seja o comprimento das pernas
+  }
+
+  /** Espessura (m) da sola dos sapatos: o corpo sobe esse tanto para a sola, e não a pele, tocar o chão. */
+  setGroundLift(m) {
+    if (m === this.groundLift) return;
+    this.groundLift = m;
+    this.group.position.y = -this.floorY + m;
   }
 }

@@ -17,6 +17,7 @@ import { Dresser } from '../src/garments/dresser.js';
 import { createNoise3D } from '../src/shaders/textures.js';
 import { GARMENT_TYPES, OUTFITS } from '../src/domain/wardrobe.js';
 import { neutralDials } from '../src/domain/dials.js';
+import { RING as TOE_RING } from '../src/garments/shoes.js';
 
 const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'public', 'data');
 const rd = (f) => fs.readFileSync(path.join(dir, f));
@@ -270,6 +271,64 @@ for (const o of OUTFITS) {
   }
   body.setState({}, neutralDials());
 }
+
+// 6) sapatos: o bico envolve os dedos (nenhum vértice do pé fora do casco), fecha além do dedão e o corpo sobe a sola
+for (const [sname, st] of Object.entries(BODY_STATES)) {
+  body.setState({ ...Object.fromEntries(Object.keys(body.values).map((k) => [k, body.values[k]])), ...st.traits }, { ...neutralDials(), ...st.dials });
+  dresser.clear();
+  check(`sapatos (${sname}): sem peça, sola não levanta o corpo`, body.groundLift === 0, `${body.groundLift}`);
+  for (const style of [0, 1]) {
+    dresser.addItem('shoes', { options: { style, heel: 0.08 } });
+    const boxes = dresser.entries.get('shoes').parts.filter((p) => p.id.startsWith('toe')).map((p) => p.obj);
+    let worst = Infinity;
+    let tipOver = Infinity;
+    let finite = true;
+    for (const box of boxes) {
+      for (const x of box.position) if (!Number.isFinite(x)) finite = false;
+      const P = box.position;
+      const nr = (P.length / 3 - 1) / TOE_RING;
+      const zOf = (r) => P[r * TOE_RING * 3 + 2];
+      const side = box.side;
+      const mk = side === 'L' ? ctx.mask.footL : ctx.mask.footR;
+      let maxZ = -Infinity;
+      for (let v = 0; v < ctx.N; v++) {
+        if (mk[v] < 0.5 || (side === 'L') !== (body.pos[v * 3] > 0)) continue;
+        const z = body.pos[v * 3 + 2];
+        maxZ = Math.max(maxZ, z);
+        // só acima da folha de corte do Shell: adiante dela o bico é a única peça
+        if (z < zOf(0) + 0.012 || z > zOf(nr - 1)) continue;
+        let r = 0;
+        while (r < nr - 2 && zOf(r + 1) < z) r++;
+        const t = (z - zOf(r)) / (zOf(r + 1) - zOf(r));
+        const poly = [];
+        for (let i = 0; i < TOE_RING; i++) {
+          const a = (r * TOE_RING + i) * 3, b = ((r + 1) * TOE_RING + i) * 3;
+          poly.push([P[a] * (1 - t) + P[b] * t, P[a + 1] * (1 - t) + P[b + 1] * t]);
+        }
+        const px = body.pos[v * 3], py = body.pos[v * 3 + 1];
+        let inside = false;
+        let dmin = Infinity;
+        for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+          const [xi, yi] = poly[i], [xj, yj] = poly[j];
+          if ((yi > py) !== (yj > py) && px < ((xj - xi) * (py - yi)) / (yj - yi) + xi) inside = !inside;
+          const dx = xj - xi, dy = yj - yi;
+          const tt = Math.max(0, Math.min(1, ((px - xi) * dx + (py - yi) * dy) / (dx * dx + dy * dy || 1)));
+          dmin = Math.min(dmin, Math.hypot(px - (xi + dx * tt), py - (yi + dy * tt)));
+        }
+        worst = Math.min(worst, inside ? dmin : -dmin);
+      }
+      let tipZ = -Infinity;
+      for (let k = 0; k < P.length / 3; k++) tipZ = Math.max(tipZ, P[k * 3 + 2]);
+      tipOver = Math.min(tipOver, tipZ - maxZ);
+    }
+    check(`sapatos (${sname}, ${style ? 'botim' : 'scarpin'}): bico sem vértice do pé de fora, fecha além do dedão, valores finitos`, boxes.length === 2 && finite && worst > 0.0005 && tipOver > 0.008, `folga mínima ${(worst * 1000).toFixed(1)} mm, ponta ${(tipOver * 1000).toFixed(1)} mm além dos dedos`);
+    check(`sapatos (${sname}, ${style ? 'botim' : 'scarpin'}): o corpo sobe a espessura da sola`, Math.abs(body.groundLift - 0.0066) < 1e-9 && Math.abs(body.group.position.y - (-body.floorY + 0.0066)) < 1e-9, `${(body.groundLift * 1000).toFixed(1)} mm`);
+  }
+  dresser.clear();
+  check(`sapatos (${sname}): ao tirar, o corpo volta ao chão`, body.groundLift === 0 && Math.abs(body.group.position.y + body.floorY) < 1e-9, `${body.groundLift}`);
+}
+
+body.setState({}, neutralDials());
 
 const fail = results.filter((r) => !r.ok).length;
 console.log(`\n${results.length - fail}/${results.length} verificações ok`);
