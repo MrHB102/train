@@ -51,7 +51,10 @@ export class Dresser {
 
   _newEntry(id, type, style, options) {
     const mat = new FabricMaterial({ noise: this.noise, ...style });
-    return { id, type, style, options, mat, parts: [], slot: null };
+    const entry = { id, type, style, options, mat, parts: [], slot: null };
+    // sapatos: segundo material para a sola e o salto (cor2)
+    if (type === 'shoes') entry.mat2 = new FabricMaterial({ noise: this.noise, ...style, fabric: 'leather', color: style.color2, pattern: 'none', trim: 'none' });
+    return entry;
   }
 
   // ------------------------------------------------------------------ construção
@@ -87,7 +90,7 @@ export class Dresser {
     if (entry.type === 'base_top') inside = this._coverField(['top', 'onepiece']);
     else if (entry.type === 'base_bottom') inside = this._coverField(['bottom', 'onepiece']);
     const res = def(this.ctx, entry.options, { style: entry.style, dresser: this, entry });
-    const ensure = (spec, extra) => ({ ...spec, material: entry.mat, ...extra });
+    const ensure = (spec, extra) => ({ ...spec, material: spec.material ?? entry.mat, ...extra });
     let k = 0;
     for (const sh of res.shells || []) {
       const spec = ensure(sh, {});
@@ -208,6 +211,7 @@ export class Dresser {
     if (!e) return;
     e.style = { ...e.style, ...patch };
     e.mat.setParams(patch);
+    if (e.mat2) e.mat2.setParams({ color: e.style.color2 });
     for (const p of e.parts) p.obj?.setStyle?.(e.style);
     this._emit();
   }

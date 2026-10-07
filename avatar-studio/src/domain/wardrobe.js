@@ -3,7 +3,7 @@
 //   - slot: uma peça por slot (uma nova substitui a anterior; 'onepiece' ocupa top + bottom);
 //   - Outfit: conjunto temático de Garments aplicados juntos.
 const L = (pt, en) => ({ pt, en });
-const range = (id, pt, en, min, max, def, step = 0.01) => ({ id, type: 'range', label: L(pt, en), min, max, def, step });
+const range = (id, pt, en, min, max, def, step = 0.01, format) => ({ id, type: 'range', label: L(pt, en), min, max, def, step, format });
 const choice = (id, pt, en, items, def) => ({ id, type: 'choice', label: L(pt, en), items, def });
 const toggle = (id, pt, en, def) => ({ id, type: 'toggle', label: L(pt, en), def });
 
@@ -116,6 +116,15 @@ export const GARMENT_TYPES = {
     style: style({ fabric: 'satin', color: '#14141b' }),
     options: [range('size', 'Tamanho', 'Size', 0.6, 1.8, 1.0), range('lift', 'Posição', 'Position', 0, 0.04, 0.012)],
   },
+  shoes: {
+    slot: 'shoes', layer: 3, label: L('Sapatos (salto)', 'Shoes (heels)'),
+    style: style({ fabric: 'leather', color: '#15151a', color2: '#c8102e', trim: 'none' }),
+    options: [
+      range('heel', 'Altura do salto', 'Heel height', 0, 0.16, 0.1, 0.001, (v) => `${(v * 100).toFixed(0)} cm`),
+      choice('style', 'Modelo', 'Model', [{ id: 0, pt: 'Scarpin', en: 'Pump' }, { id: 1, pt: 'Botim', en: 'Ankle boot' }], 0),
+      range('thickness', 'Espessura do salto', 'Heel thickness', 0.6, 2, 1),
+    ],
+  },
   tail: {
     slot: 'tail', layer: 5, label: L('Rabo de coelha (pompom)', 'Bunny tail (pom-pom)'),
     style: style({ fabric: 'velvet', color: '#fbfbfb' }),
@@ -138,6 +147,7 @@ export const OUTFITS = [
       { type: 'bowtie', style: { fabric: 'satin', color: '#14141b' } },
       { type: 'legwear', style: { fabric: 'fishnet', color: '#101014', cell: 0.0072, thread: 0.18, trim: 'none' }, options: { top: 1 } },
       { type: 'tail' },
+      { type: 'shoes', options: { heel: 0.11 } },
     ],
   },
   {
@@ -151,6 +161,7 @@ export const OUTFITS = [
       { type: 'collar', style: { fabric: 'lace', color: '#fbfbfb', cell: 0.014, trim: 'none' }, options: { height: 0.026 } },
       { type: 'bowtie', style: { fabric: 'satin', color: '#fbfbfb' }, options: { size: 0.8 } },
       { type: 'legwear', style: { fabric: 'sheer', color: '#fafafa', denier: 0.5, trim: 'scallop', trimColor: '#fafafa', trimWidth: 0.04 }, options: { top: 0.7 } },
+      { type: 'shoes', style: { color: '#15151a', color2: '#15151a' }, options: { heel: 0.045 } },
     ],
   },
   {
@@ -195,6 +206,7 @@ export const OUTFITS = [
       { type: 'skirt', style: { fabric: 'velvet', color: '#16161c', trim: 'scallop', trimColor: '#16161c' }, options: { length: 0.55, flare: 1.1 } },
       { type: 'collar', style: { fabric: 'leather', color: '#101014', trim: 'piping', trimColor: '#a31428' } },
       { type: 'legwear', style: { fabric: 'fishnet', color: '#0c0c10', cell: 0.0058, thread: 0.2 }, options: { top: 1 } },
+      { type: 'shoes', style: { color: '#101014', color2: '#a31428' }, options: { heel: 0.09, style: 1 } },
     ],
   },
 ];

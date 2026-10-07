@@ -74,13 +74,14 @@ export class App {
     app.elastic = new Elastic(app.body, app.jiggle);
     onProgress?.('outfit');
     app.dresser = new Dresser({ body: app.body, ctx: app.ctx, wardrobe: app.wardrobe, noise, engine: app.engine, colliders: app.colliders });
+    app.dresser.sim = { elastic: app.elastic, animator: app.animator };
     app.engine.stage.add(app.body.group);
     app.body.onChange((b) => app._syncSkinState(b));
     app._syncSkinState(app.body);
     app.applyDyn();
     app.applyView();
     app.engine.onUpdate((dt) => app._update(dt));
-    app.dresser.onChange(() => app.emit('design'));
+    app.dresser.onChange(() => (app.applyView(), app.emit('design')));
     app.engine.start();
     app.history = [app.serialize()];
     return app;
@@ -156,7 +157,7 @@ export class App {
     this.animator.setPose(v.pose);
     this.animator.setMotion(v.motion);
     this.animator.speed = v.speed;
-    this.animator.heelMeters = v.heel;
+    this.animator.heelMeters = this.dresser?.entries.get('shoes')?.options.heel ?? v.heel; // com sapato, o salto vem dele
     this.engine.state.autoRotate = v.autoRotate;
     this.engine.state.rotateSpeed = v.rotateSpeed;
     this.engine.renderer.toneMappingExposure = v.exposure;

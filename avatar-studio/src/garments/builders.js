@@ -8,6 +8,7 @@ import { smoothstep, mix, excludeLimbs, excludeArms, highLegCut, neckBand, legAx
 import { baseTop, baseBottom } from './recipes/base.js';
 import { skirt, apron } from './drapes.js';
 import { NeckBow, BunnyTail } from './objects.js';
+import { shoes } from './shoes.js';
 
 const TAU = Math.PI * 2;
 const clamp01 = (x) => Math.min(1, Math.max(0, x));
@@ -294,6 +295,7 @@ export const BUILDERS = {
   apron,
   bowtie,
   tail,
+  shoes,
 };
 
 void highLegCut;

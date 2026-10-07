@@ -104,6 +104,23 @@ export class Shell {
         skinWeight[k * 4 + j] = top[j] ? top[j][1] / tot : 0;
       }
     });
+    // direção de deslocamento própria (opcional): em vez da normal da pele, útil para fundir superfícies
+    // (ex.: bico do sapato sobre dedos separados). spec.dirFn(v, ctx) -> { d: [x,y,z], w } | null
+    this.dirW = null;
+    if (spec.dirFn) {
+      this.dirW = new Float32Array(M);
+      this.dirV = new Float32Array(M * 3);
+      this.vertices.forEach((vt, k) => {
+        const { a, b, t } = vt;
+        const ra = spec.dirFn(a, ctx);
+        const rb = t ? spec.dirFn(b, ctx) : ra;
+        const wa = ra ? ra.w : 0;
+        const wb = rb ? rb.w : 0;
+        const w = wa * (1 - t) + wb * t;
+        this.dirW[k] = w;
+        for (let c = 0; c < 3; c++) this.dirV[k * 3 + c] = (ra ? ra.d[c] * wa : 0) * (1 - t) + (rb ? rb.d[c] * wb : 0) * t;
+      });
+    }
     this.refreshOffsets();
 
     const g = new THREE.BufferGeometry();
@@ -161,8 +178,18 @@ export class Shell {
       let nx = bodyNormals[a * 3] * s + bodyNormals[b * 3] * t;
       let ny = bodyNormals[a * 3 + 1] * s + bodyNormals[b * 3 + 1] * t;
       let nz = bodyNormals[a * 3 + 2] * s + bodyNormals[b * 3 + 2] * t;
-      const l = Math.hypot(nx, ny, nz) || 1;
+      let l = Math.hypot(nx, ny, nz) || 1;
       nx /= l; ny /= l; nz /= l;
+      if (this.dirW && this.dirW[k] > 0) {
+        // mistura a normal da pele com a direção própria (peso w), normalizando
+        const w = Math.min(1, this.dirW[k]);
+        const dl = Math.hypot(this.dirV[k * 3], this.dirV[k * 3 + 1], this.dirV[k * 3 + 2]) || 1;
+        nx = nx * (1 - w) + (this.dirV[k * 3] / dl) * w;
+        ny = ny * (1 - w) + (this.dirV[k * 3 + 1] / dl) * w;
+        nz = nz * (1 - w) + (this.dirV[k * 3 + 2] / dl) * w;
+        l = Math.hypot(nx, ny, nz) || 1;
+        nx /= l; ny /= l; nz /= l;
+      }
       N[k * 3] = nx; N[k * 3 + 1] = ny; N[k * 3 + 2] = nz;
       const o = off[k];
       P[k * 3] = bodyPos[a * 3] * s + bodyPos[b * 3] * t + nx * o;
