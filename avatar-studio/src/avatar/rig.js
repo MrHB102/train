@@ -82,7 +82,17 @@ export class Rig {
     for (let i = 0; i < this.count; i++) this.bones[i].position.copy(this.restLocal[i]).add(this.offset[i]);
   }
 
+  /** Rotações voltam ao repouso; deslocamentos de Jiggle (juntas virtuais) são preservados. */
   resetPose() {
+    for (let i = 0; i < this.count; i++) {
+      this.bones[i].quaternion.identity();
+      if (!this.defs[i].v) this.offset[i].set(0, 0, 0);
+    }
+    this.applyOffsets();
+  }
+
+  /** Zera tudo, inclusive o Jiggle. */
+  clearAll() {
     for (let i = 0; i < this.count; i++) {
       this.bones[i].quaternion.identity();
       this.offset[i].set(0, 0, 0);

@@ -38,6 +38,7 @@ export class Body {
     this.mesh.receiveShadow = true;
     this.group.add(this.mesh);
 
+    this.buildLegSides();
     this.buildSmoothing();
     this.rebuild();
     // estado de referência (Traits neutros): as roupas são cortadas e coladas sobre ele (ADR 0005)
@@ -48,6 +49,8 @@ export class Body {
       heads: this.rig.headWorld.map((v) => v.clone()),
       tails: this.rig.tailWorld.map((v) => v.clone()),
     };
+    // coordenadas de referência para texturas procedurais ancoradas na pele
+    g.setAttribute('aRest', new THREE.BufferAttribute(Float32Array.from(this.reference.pos), 3));
     this.mesh.bind(this.rig.skeleton, new THREE.Matrix4());
 
     this.caps = new Caps(pkg, this.pos);
@@ -57,7 +60,7 @@ export class Body {
     this.capsMesh.castShadow = true;
     this.capsMesh.bind(this.rig.skeleton, new THREE.Matrix4());
     this.group.add(this.capsMesh);
-    this.rig.resetPose();
+    this.rig.clearAll();
   }
 
   onChange(fn) {
@@ -104,6 +107,7 @@ export class Body {
       pos[k * 3 + 1] = y;
       pos[k * 3 + 2] = z;
     }
+    this.applyThighContact(pos, this.effective()['thighs.contact'] || 0);
     this.applySmoothing(pos);
     this.computeNormals();
     this.rig.updateRest(P, pos);
@@ -112,6 +116,44 @@ export class Body {
     if (this.caps) this.caps.update(pos);
     this.measureFloor();
     this.listeners.forEach((fn) => fn(this));
+  }
+
+  /** Lado da perna de cada vértice (+1 esquerda, -1 direita, 0 nenhum) a partir dos pesos de skinning. */
+  buildLegSides() {
+    const { skinIndex, skinWeight } = this.pkg;
+    const names = this.rig.names;
+    const side = (n) => (/^(upperleg0[12]|lowerleg0[12]|foot|toe\d-\d)\.L$/.test(n) ? 1 : /^(upperleg0[12]|lowerleg0[12]|foot|toe\d-\d)\.R$/.test(n) ? -1 : 0);
+    const bs = names.map(side);
+    this.legSide = new Int8Array(this.N);
+    for (let v = 0; v < this.N; v++) {
+      let l = 0, r = 0;
+      for (let j = 0; j < 4; j++) {
+        const w = skinWeight[v * 4 + j] / 255;
+        const s = bs[skinIndex[v * 4 + j]];
+        if (s > 0) l += w;
+        else if (s < 0) r += w;
+      }
+      this.legSide[v] = l > 0.55 ? 1 : r > 0.55 ? -1 : 0;
+    }
+  }
+
+  /** Contato entre as coxas: nenhuma perna atravessa a linha central (suave), formando a área de contato. */
+  applyThighContact(pos, amount) {
+    if (amount <= 0.001) return;
+    const margin = 0.0012 + (1 - amount) * 0.03;
+    const s = 0.006;
+    for (let v = 0; v < this.N; v++) {
+      const side = this.legSide[v];
+      if (!side) continue;
+      const x = pos[v * 3] * side; // distância à linha central, positiva do lado correto
+      if (x < margin + s * 4) {
+        // soft-max(x, margin): continua suave e nunca cruza a linha central
+        const d = x - margin;
+        const soft = d > s * 4 ? d : s * Math.log1p(Math.exp(d / s));
+        const nx = margin + soft;
+        pos[v * 3] = nx * side;
+      }
+    }
   }
 
   /** Suavização "manequim" (mamilos e cruzamento): vizinhança dos vértices da zona. */

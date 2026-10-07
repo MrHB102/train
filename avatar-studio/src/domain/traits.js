@@ -127,17 +127,20 @@ detail('hips.forward', 'hips', L('Inclinação pélvica', 'Pelvic tilt'), betwee
 detail('hips.lift', 'hips', L('Posição vertical', 'Vertical position'), between('hip', 'hip-trans', 'down', 'up'));
 detail('hips.tone', 'hips', L('Definição pélvica', 'Pelvic tone'), dec('pelvis', 'pelvis-tone'));
 detail('glutes.volume', 'glutes', L('Tamanho dos glúteos', 'Glute size'), dec('buttocks', 'buttocks-volume'), { natural: [-1, 1], extended: [-1.4, 1.7] });
-// formas dos glúteos (morphs procedurais): firmeza, dobra infraglútea e sulco central
-detail('glutes.sag', 'glutes', L('Firmeza (empinado ↔ caído)', 'Firmness (perky ↔ sagging)'), {
-  neg: [['custom/glutes-sag-decr', 1], ['custom/glutes-fold-decr', 0.35]],
-  pos: [['custom/glutes-sag-incr', 1], ['custom/glutes-fold-incr', 0.7]],
-}, { natural: [-1, 1], extended: [-1.4, 1.6] });
+// formas dos glúteos (morphs procedurais): Lift, dobra infraglútea e sulco central
+detail('glutes.lift', 'glutes', L('Posição (relaxado ↔ empinado)', 'Lift (relaxed ↔ perky)'), {
+  neg: [['custom/glutes-lift-decr', 1], ['custom/glutes-fold-incr', 0.45]],
+  pos: [['custom/glutes-lift-incr', 1], ['custom/glutes-fold-decr', 0.3]],
+}, { natural: [-1, 1], extended: [-1.4, 1.5], hint: L('Relaxado = macio e mais pesado embaixo, sem aparência envelhecida', 'Relaxed = soft and fuller below, never aged-looking') });
 detail('glutes.fold', 'glutes', L('Dobra sob o glúteo', 'Gluteal fold'), { neg: ['custom/glutes-fold-decr'], pos: ['custom/glutes-fold-incr'] }, { natural: [-0.6, 1], extended: [-1, 1.7] });
 detail('glutes.cleft', 'glutes', L('Sulco central', 'Central cleft'), { neg: ['custom/glutes-cleft-decr'], pos: ['custom/glutes-cleft-incr'] }, { natural: [-0.6, 1], extended: [-1, 1.7] });
 detail('glutes.extraVolume', 'glutes', L('Volume extra (arredondar)', 'Extra volume (rounder)'), { neg: ['custom/glutes-volume-decr'], pos: ['custom/glutes-volume-incr'] }, { natural: [-0.6, 1], extended: [-1, 1.8] });
 
 // ------------------------------------------------------------------ Legs
 detail('thighs.extraVolume', 'thighs', L('Volume extra das coxas', 'Extra thigh volume'), { neg: ['custom/thighs-volume-decr'], pos: ['custom/thighs-volume-incr'] }, { natural: [-0.6, 1], extended: [-1, 1.8] });
+detail('thighs.upperVolume', 'thighs', L('Parte alta das coxas (pera)', 'Upper thighs (pear)'), { neg: ['custom/thighs-upper-volume-decr'], pos: ['custom/thighs-upper-volume-incr'] }, { natural: [-0.6, 1], extended: [-1, 1.8] });
+// Contato entre as coxas: 0 = livres; 1 = se encostam ao longo de toda a perna, sem se atravessar (sem vão)
+detail('thighs.contact', 'thighs', L('Coxas juntas (sem vão)', 'Touching thighs (no gap)'), { neg: [], pos: [] }, { natural: [0, 1], extended: [0, 1], neutral: 0, runtime: 'thighContact' });
 detail('thighs.fullness', 'thighs', L('Volume das coxas', 'Thigh fullness'), lr('upperleg-fat'));
 detail('thighs.muscle', 'thighs', L('Definição das coxas', 'Thigh muscle'), lr('upperleg-muscle'));
 detail('thighs.width', 'thighs', L('Largura das coxas', 'Thigh width'), lr('upperleg-scale-horiz'));

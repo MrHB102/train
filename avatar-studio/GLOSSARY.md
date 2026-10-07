@@ -64,6 +64,10 @@ _Avoid_: shape key, blend shape, target file
 A single control that moves several Traits together toward a named look, such as Curves, Muscle Tone or Thigh Thickness. A Design stores the Dial's position apart from the Traits it drives.
 _Avoid_: shortcut, combo slider, master slider
 
+**Lift**:
+The vertical carriage of a Soft Tissue Region, from perky (high and firm) to relaxed (fuller and lower). Relaxed is a soft, attractive shape and never the sagging of an aged body; only Age ages the Body.
+_Avoid_: sag, droop
+
 **Silhouette**:
 One of the named overall outline families (Hourglass, Pear, Apple, Rectangle, Inverted Triangle, Diamond, Column) that can be blended into the Body.
 _Avoid_: body type, body shape
@@ -177,6 +181,10 @@ _Avoid_: complexion, race color
 **Mark**:
 A small natural feature on the Skin, such as a freckle or a mole.
 _Avoid_: spot, blemish
+
+**Imperfection**:
+Any natural irregularity of the Skin: pores, mottling, redness, veins and Marks. Each one can be dialed down to zero, and all together give flawless skin.
+_Avoid_: defect, texture detail, noise
 
 **Sheen**:
 The glossy or shimmering finish of the Skin.

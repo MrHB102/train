@@ -536,29 +536,49 @@ const procedural = {
     }
     return best && best.amp > 1e-4 ? mul(best.dir, best.amp) : null;
   },
-  // massa dos glúteos desce (caído) com o polo superior achatado e o inferior pendendo para trás
-  'glutes-sag': (v, p, n) => {
+  // parte alta das coxas (formato pera, como nos desenhos de referência): cresce mais perto do quadril e
+  // afina até o joelho; empurra a superfície radialmente a partir do eixo da coxa
+  'thighs-upper-volume': (v, p, n) => {
+    let best = null;
+    for (const s of [1, -1]) {
+      const k = Math.min(1, Math.max(0, (-p[1] - 0.05) / 3.675)); // 0 no quadril, 1 no joelho
+      const ax = (0.943 + 0.394 * k) * s;
+      const az = 0.175 + 0.304 * k;
+      const rr = [p[0] - ax, 0, p[2] - az];
+      const q = Math.hypot((p[0] - ax) / 1.15, (p[1] + 1.55) / 1.3, (p[2] - az) / 1.2);
+      let w = 1 - smoothstep(0, 1, q);
+      if (s * p[0] < 0.3) w *= smoothstep(0.1, 0.45, s * p[0]);
+      if (w <= 0) continue;
+      const amp = 0.34 * w;
+      if (!best || amp > best.amp) best = { amp, dir: norm(add(mul(norm(rr), 0.8), mul(n, 0.2))) };
+    }
+    return best && best.amp > 1e-4 ? mul(best.dir, best.amp) : null;
+  },
+  // glúteos "relaxados" (macios): a massa desce pouco, a parte de baixo fica mais cheia e projetada e o
+  // polo superior só suaviza. Nunca achata nem pende como num corpo envelhecido (isso é o Trait Age).
+  'glutes-relax': (v, p, n) => {
     const g = gluteWeight(p, n);
     if (g.w <= 0) return null;
     const yr = (p[1] - g.c[1]) / 0.7;
     const upper = smoothstep(-0.2, 0.7, yr);
-    const lower = smoothstep(0.2, -0.8, yr);
-    const d = [0.04 * g.s * g.w, -0.3 * g.w, -0.05 * g.w * lower];
-    return add(d, mul(n, -0.07 * g.w * upper));
+    const lower = smoothstep(0.1, -0.8, yr);
+    const d = [0.02 * g.s * g.w, -0.13 * g.w, -0.05 * g.w * lower];
+    return add(d, mul(n, 0.05 * g.w * lower - 0.02 * g.w * upper));
   },
+  // glúteos "empinados" (firmes): sobem e arredondam o polo superior
   'glutes-lift': (v, p, n) => {
     const g = gluteWeight(p, n);
     if (g.w <= 0) return null;
     const yr = (p[1] - g.c[1]) / 0.7;
     const upper = smoothstep(-0.2, 0.7, yr);
-    const d = [-0.02 * g.s * g.w, 0.22 * g.w, -0.03 * g.w * upper];
+    const d = [-0.02 * g.s * g.w, 0.2 * g.w, -0.03 * g.w * upper];
     return add(d, mul(n, 0.05 * g.w * upper));
   },
   // dobra infraglútea: sulco sob o glúteo + leve "rolo" acima dela
   'glutes-fold': (v, p, n) => {
     const f = foldGroove(p, n);
     if (f.groove < 1e-3 && f.roll < 1e-3) return null;
-    return mul(n, -0.12 * f.groove + 0.05 * f.roll);
+    return mul(n, -0.09 * f.groove + 0.04 * f.roll);
   },
   // sulco central (entre os glúteos)
   'glutes-cleft': (v, p, n) => {
@@ -587,12 +607,12 @@ function emitProcedural(name, fn, sign) {
   targetNames.push(name);
   console.log(`  ${name}: ${ids.length} vértices`);
 }
-for (const key of ['bust-volume', 'glutes-volume', 'thighs-volume', 'glutes-fold', 'glutes-cleft']) {
+for (const key of ['bust-volume', 'glutes-volume', 'thighs-volume', 'thighs-upper-volume', 'glutes-fold', 'glutes-cleft']) {
   emitProcedural(`custom/${key}-incr`, procedural[key], +1);
   emitProcedural(`custom/${key}-decr`, procedural[key], -1);
 }
-emitProcedural('custom/glutes-sag-incr', procedural['glutes-sag'], +1);
-emitProcedural('custom/glutes-sag-decr', procedural['glutes-lift'], +1);
+emitProcedural('custom/glutes-lift-incr', procedural['glutes-lift'], +1);
+emitProcedural('custom/glutes-lift-decr', procedural['glutes-relax'], +1);
 
 // ---------------------------------------------------------------- escrita
 const pad4 = (n) => (n + 3) & ~3;

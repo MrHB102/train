@@ -115,6 +115,21 @@ export function createEngine(container) {
       renderer.setAnimationLoop(frame);
     },
     renderOnce() { frame(performance.now()); },
+    /** Para o loop (testes determinísticos). */
+    stop() {
+      running = false;
+      renderer.setAnimationLoop(null);
+    },
+    /** Avança a simulação com um dt fixo e renderiza (usado nos testes e capturas). */
+    step(dt = 1 / 60, n = 1) {
+      for (let i = 0; i < n; i++) {
+        state.time += dt;
+        if (state.autoRotate) stage.rotation.y += dt * state.rotateSpeed;
+        for (const fn of updaters) fn(dt, state.time);
+      }
+      controls.update();
+      renderer.render(scene, camera);
+    },
     resize,
   };
 }
