@@ -203,7 +203,7 @@ export const OUTFITS = [
     label: L('Gótica', 'Gothic'),
     items: [
       { type: 'leotard', style: { fabric: 'latex', color: '#101014', trim: 'piping', trimColor: '#a31428', seams: 1, seamColor: '#a31428' }, options: { legCut: 0.4, backDrop: 0.8 } },
-      { type: 'skirt', style: { fabric: 'velvet', color: '#16161c', trim: 'scallop', trimColor: '#16161c' }, options: { length: 0.55, flare: 1.1 } },
+      { type: 'skirt', style: { fabric: 'velvet', color: '#16161c', trim: 'scallop', trimColor: '#16161c' }, options: { length: 0.5, flare: 0.9 } },
       { type: 'collar', style: { fabric: 'leather', color: '#101014', trim: 'piping', trimColor: '#a31428' } },
       { type: 'legwear', style: { fabric: 'fishnet', color: '#0c0c10', cell: 0.0058, thread: 0.2 }, options: { top: 1 } },
       { type: 'shoes', style: { color: '#101014', color2: '#a31428' }, options: { heel: 0.09, style: 1 } },
