@@ -60,6 +60,10 @@ _Avoid_: fine-tune, local slider
 A stored displacement of the Body's surface that Traits blend to produce a Body.
 _Avoid_: shape key, blend shape, target file
 
+**Dial**:
+A single control that moves several Traits together toward a named look, such as Curves, Muscle Tone or Thigh Thickness. A Design stores the Dial's position apart from the Traits it drives.
+_Avoid_: shortcut, combo slider, master slider
+
 **Silhouette**:
 One of the named overall outline families (Hourglass, Pear, Apple, Rectangle, Inverted Triangle, Diamond, Column) that can be blended into the Body.
 _Avoid_: body type, body shape
@@ -143,6 +147,10 @@ _Avoid_: cloth, loose garment, soft garment
 **Accessory**:
 An addition that is not clothing: a tail, a collar bow, a ribbon, an anklet.
 _Avoid_: prop, add-on
+
+**Padding**:
+The extra thickness under a Shell that smooths the Body's contour over the Bust. At zero, thin fabric traces the form (the "tent").
+_Avoid_: cup, lining
 
 **Fabric**:
 The material look of a Garment: satin, latex, cotton, lace, fishnet, velvet.

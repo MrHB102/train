@@ -2,10 +2,12 @@
 // Conversor de assets: MakeHuman (CC0) -> pacote binário para o navegador.
 //
 // Gera o corpo feminino SEM CABEÇA E SEM BRAÇOS (torso + pernas, estilo manequim):
-//  - malha cortada por planos no pescoço e nos ombros (triângulos recortados com vértices novos
-//    ligados por (A,B,t) aos vértices base, assim o corte acompanha todos os morphs);
-//  - pesos de skinning (top-4) remapeados para o esqueleto reduzido + ossos virtuais de jiggle;
-//  - morph targets esparsos quantizados (somente fêmea adulta; sem rosto/mãos).
+//  1. subdivide a malha base com Catmull-Clark (1 nível) -> pele lisa; cada vértice novo é um *stencil*
+//     (combinação linear dos vértices base), então todo morph target herda a suavização;
+//  2. corta a malha subdividida por planos no pescoço e nos ombros (ADR 0003): triângulos recortados,
+//     vértices novos nascem em arestas e também viram stencils (acompanham morphs, poses e Jiggle);
+//  3. pesos de skinning (top-4) remapeados para o esqueleto reduzido + juntas virtuais de Jiggle;
+//  4. morph targets esparsos quantizados (somente fêmea adulta) + volumes e formas procedurais.
 //
 // Uso: node tools/build-assets.mjs [--mh <makehuman/makehuman/data>] [--out public/data]
 import fs from 'node:fs';
@@ -13,7 +15,8 @@ import path from 'node:path';
 import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import { parseObj, parseTarget, parseSkeleton, parseWeights } from './lib/mh.mjs';
-import { clipTriangles } from '../src/geometry/clip.js';
+import { catmullClark, lerpRows } from './lib/subdivide.mjs';
+import { clipTriangles, compactClip } from '../src/geometry/clip.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
@@ -31,6 +34,7 @@ const SCALE = 0.1; // decímetro (MakeHuman) -> metro
 const CUT = {
   neck: 0.62, // distância ao longo do eixo do pescoço a partir de neck01.head
   arm: 0.95, // distância ao longo do eixo do braço a partir de upperarm01.head
+  snap: 0.025, // 2,5 mm: vértices tão perto do plano ficam exatamente nele (sem triângulos-lasca)
 };
 
 // ---------------------------------------------------------------- vetor util
@@ -51,6 +55,7 @@ const obj = parseObj(path.join(MH, '3dobjs', 'base.obj'));
 const basePos = obj.pos; // 19158*3, dm
 const NV = basePos.length / 3;
 const bodyFaces = obj.groups.get('body');
+const bodyQuads = bodyFaces.map((f) => f.v);
 const skel = parseSkeleton(path.join(MH, 'rigs', 'default.mhskel'));
 const mhw = parseWeights(path.join(MH, 'rigs', 'default_weights.mhw'));
 
@@ -81,12 +86,10 @@ const jointPos = (jname, P = Pdef) => {
   return mul(s, 1 / idx.length);
 };
 const boneHead = (b) => jointPos(skel.bones[b].head);
-const boneTail = (b) => jointPos(skel.bones[b].tail);
 
 // ---------------------------------------------------------------- esqueleto reduzido
 const dropRe = /^(finger|metacarpal|lowerarm|wrist|eye|oculi|orbicularis|levator|oris|risorius|temporalis|tongue|special|jaw|head$)/;
 const keepBones = Object.keys(skel.bones).filter((b) => !dropRe.test(b));
-// ordem topológica (pais antes)
 const order = [];
 const seen = new Set();
 const visit = (b) => {
@@ -98,123 +101,48 @@ const visit = (b) => {
 };
 keepBones.forEach(visit);
 const boneIndex = new Map(order.map((b, i) => [b, i]));
-// mapeia um osso qualquer para o ancestral retido mais próximo
 const retainedOf = (b) => {
   let c = b;
   while (c && !boneIndex.has(c)) c = skel.bones[c].parent;
   return c || 'root';
 };
-// o resto do braço aponta para upperarm02; cabeça/rosto para neck03 (via ancestral retido)
 console.log(`  ossos retidos: ${order.length}`);
 
 // ---------------------------------------------------------------- pesos por vértice base
 const wacc = Array.from({ length: NV }, () => new Map());
 for (const [bone, list] of Object.entries(mhw)) {
-  const rb = retainedOf(bone);
-  const bi = boneIndex.get(rb);
-  for (const [v, w] of list) {
-    const m = wacc[v];
-    m.set(bi, (m.get(bi) || 0) + w);
-  }
+  const bi = boneIndex.get(retainedOf(bone));
+  for (const [v, w] of list) wacc[v].set(bi, (wacc[v].get(bi) || 0) + w);
 }
-// campo "peso de braço" (ossos do braço a partir de upperarm01) para o corte dos ombros
-const armBonesL = new Set();
-const armBonesR = new Set();
+const armBones = { L: new Set(), R: new Set() };
 for (const b of Object.keys(skel.bones)) {
-  if (/^(upperarm01|upperarm02|lowerarm|wrist|finger|metacarpal)/.test(b)) (b.endsWith('.L') ? armBonesL : armBonesR).add(b);
+  if (/^(upperarm01|upperarm02|lowerarm|wrist|finger|metacarpal)/.test(b)) armBones[b.endsWith('.L') ? 'L' : 'R'].add(b);
 }
 const armW = { L: new Float32Array(NV), R: new Float32Array(NV) };
 for (const [bone, list] of Object.entries(mhw)) {
-  for (const side of ['L', 'R']) {
-    if ((side === 'L' ? armBonesL : armBonesR).has(bone)) for (const [v, w] of list) armW[side][v] += w;
+  for (const side of ['L', 'R']) if (armBones[side].has(bone)) for (const [v, w] of list) armW[side][v] += w;
+}
+
+// normais aproximadas (malha base, mulher padrão)
+const nrm = new Float64Array(NV * 3);
+{
+  const tri = [];
+  for (const [a, b, c, d] of bodyQuads) tri.push([a, b, c], [a, c, d]);
+  for (const t of tri) {
+    const a = P3(Pdef, t[0]);
+    const e1 = sub(P3(Pdef, t[1]), a);
+    const e2 = sub(P3(Pdef, t[2]), a);
+    const n = [e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2], e1[0] * e2[1] - e1[1] * e2[0]];
+    for (const v of t) for (let k = 0; k < 3; k++) nrm[v * 3 + k] += n[k];
+  }
+  for (let v = 0; v < NV; v++) {
+    const l = Math.hypot(nrm[v * 3], nrm[v * 3 + 1], nrm[v * 3 + 2]) || 1;
+    for (let k = 0; k < 3; k++) nrm[v * 3 + k] /= l;
   }
 }
+const nrm3 = (v) => [nrm[v * 3], nrm[v * 3 + 1], nrm[v * 3 + 2]];
 
-// ---------------------------------------------------------------- campos escalares de corte
-const neckA = norm(sub(boneHead('neck03'), boneHead('neck01')));
-const neckP0 = add(boneHead('neck01'), mul(neckA, CUT.neck));
-const armCut = {};
-for (const side of ['L', 'R']) {
-  const h = boneHead(`upperarm01.${side}`);
-  const a = norm(sub(boneHead(`upperarm02.${side}`), h));
-  armCut[side] = { a, p0: add(h, mul(a, CUT.arm)) };
-}
-const F = new Float64Array(NV);
-for (let v = 0; v < NV; v++) {
-  const p = P3(Pdef, v);
-  let f = dot(sub(p, neckP0), neckA);
-  for (const side of ['L', 'R']) {
-    const c = armCut[side];
-    const fa = armW[side][v] > 0.5 ? dot(sub(p, c.p0), c.a) : -1;
-    if (fa > f) f = fa;
-  }
-  F[v] = f;
-}
-
-// ---------------------------------------------------------------- triangulação (diagonal mais curta)
-const tris = [];
-for (const f of bodyFaces) {
-  const [a, b, c, d] = f.v;
-  if (f.v.length === 3) {
-    tris.push([a, b, c]);
-    continue;
-  }
-  const d02 = len(sub(P3(Pdef, a), P3(Pdef, c)));
-  const d13 = len(sub(P3(Pdef, b), P3(Pdef, d)));
-  if (d02 <= d13) tris.push([a, b, c], [a, c, d]);
-  else tris.push([a, b, d], [b, c, d]);
-}
-
-// ---------------------------------------------------------------- recorte (módulo compartilhado com o runtime)
-const SNAP = 0.04; // dm (4 mm): vértices tão próximos do plano ficam exatamente nele
-const clipRes = clipTriangles(tris.flat(), F, SNAP);
-const clipDesc = clipRes.clipVerts; // [A,B,t] em índice base original
-const clipped = [];
-for (let t = 0; t < clipRes.tris.length; t += 3) clipped.push([clipRes.tris[t], clipRes.tris[t + 1], clipRes.tris[t + 2]]);
-
-// ---------------------------------------------------------------- compactação
-// Vértices da malha final (índices originais >= NV são recortados)
-const used = new Set();
-for (const t of clipped) for (const v of t) used.add(v);
-const finalList = [...used].sort((a, b) => a - b);
-const finalIndex = new Map(finalList.map((v, i) => [v, i]));
-const N = finalList.length;
-
-// base vertices necessários: os dos vértices finais originais + extremos dos recortados + juntas
-const baseNeeded = new Set();
-for (const v of finalList) {
-  if (v < NV) baseNeeded.add(v);
-  else {
-    const [A, B] = clipDesc[v - NV];
-    baseNeeded.add(A);
-    baseNeeded.add(B);
-  }
-}
-for (const b of order) {
-  for (const j of skel.bones[b].head && [skel.bones[b].head, skel.bones[b].tail]) for (const v of skel.joints[j]) baseNeeded.add(v);
-}
-// réguas de medidas (MakeHuman, plugin de medidas) e topo da cabeça (para a altura total)
-const RULERS = {
-  bust: [8439, 8455, 8462, 8446, 8478, 8494, 8557, 8510, 8526, 8542, 10720, 10601, 10603, 10602, 10612, 10611, 10610, 10613, 10604, 10605, 10606, 3942, 3941, 3940, 3950, 3947, 3948, 3949, 3938, 3939, 3937, 4065, 1870, 1854, 1838, 1885, 1822, 1806, 1774, 1790, 1783, 1767, 1799, 8471],
-  underbust: [10750, 10744, 10724, 10725, 10748, 10722, 10640, 10642, 10641, 10651, 10650, 10649, 10652, 10643, 10644, 10645, 10646, 10647, 10648, 3988, 3987, 3986, 3985, 3984, 3983, 3982, 3992, 3989, 3990, 3991, 3980, 3981, 3979, 4067, 4098, 4073, 4072, 4094, 4100, 4082, 4088],
-  waist: [4121, 10760, 10757, 10777, 10776, 10779, 10780, 10778, 10781, 10771, 10773, 10772, 10775, 10774, 10814, 10834, 10816, 10817, 10818, 10819, 10820, 10821, 4181, 4180, 4179, 4178, 4177, 4176, 4175, 4196, 4173, 4131, 4132, 4129, 4130, 4128, 4138, 4135, 4137, 4136, 4133, 4134, 4108, 4113, 4118, 4121],
-  hips: [4341, 10968, 10969, 10971, 10970, 10967, 10928, 10927, 10925, 10926, 10923, 10924, 10868, 10875, 10861, 10862, 4228, 4227, 4226, 4242, 4234, 4294, 4293, 4296, 4295, 4297, 4298, 4342, 4345, 4346, 4344, 4343, 4361, 4341],
-  thigh: [11071, 11080, 11081, 11086, 11076, 11077, 11074, 11075, 11072, 11073, 11069, 11070, 11087, 11085, 11084, 12994, 11083, 11082, 11079, 11071],
-  knee: [11223, 11230, 11232, 11233, 11238, 11228, 11229, 11226, 11227, 11224, 11225, 11221, 11222, 11239, 11237, 11236, 13002, 11235, 11234, 11223],
-  calf: [11339, 11336, 11353, 11351, 11350, 13008, 11349, 11348, 11345, 11337, 11344, 11346, 11347, 11352, 11342, 11343, 11340, 11341, 11338, 11339],
-  ankle: [11460, 11464, 11458, 11459, 11419, 11418, 12958, 12965, 12960, 12963, 12961, 12962, 12964, 12927, 13028, 12957, 11463, 11461, 11457, 11460],
-  // alturas verticais (pares de vértices) usadas para o comprimento do torso
-  napeToWaist: [1491, 4181],
-};
-const CROWN = skel.joints['head____tail'];
-for (const list of Object.values(RULERS)) for (const v of list) baseNeeded.add(v);
-for (const v of CROWN) baseNeeded.add(v);
-const baseList = [...baseNeeded].sort((a, b) => a - b);
-const baseMap = new Map(baseList.map((v, i) => [v, i]));
-const NB = baseList.length;
-console.log(`  malha: ${N} vértices (${finalList.filter((v) => v >= NV).length} recortados), ${clipped.length} triângulos, base compacta ${NB}`);
-
-// ---------------------------------------------------------------- ossos virtuais (jiggle)
+// ---------------------------------------------------------------- juntas virtuais (jiggle)
 // Elipsóides no espaço da mulher padrão (dm). Peso = amp * (1 - smoothstep(0,1,q)).
 const VIRTUAL = [
   { name: 'glute.L', parent: 'pelvis.L', c: [0.9, -0.45, -0.95], r: [1.0, 1.15, 0.85], amp: 0.92, side: +1, nzMax: 0.35 },
@@ -227,35 +155,10 @@ for (const vb of VIRTUAL) {
   boneIndex.set(vb.name, order.length);
   order.push(vb.name);
 }
-
-// normais aproximadas na mulher padrão para limitar ossos virtuais à face externa
-const nrm = new Float64Array(NV * 3);
-for (const t of tris) {
-  const a = P3(Pdef, t[0]);
-  const b = P3(Pdef, t[1]);
-  const c = P3(Pdef, t[2]);
-  const e1 = sub(b, a);
-  const e2 = sub(c, a);
-  const n = [e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2], e1[0] * e2[1] - e1[1] * e2[0]];
-  for (const v of t) {
-    nrm[v * 3] += n[0];
-    nrm[v * 3 + 1] += n[1];
-    nrm[v * 3 + 2] += n[2];
-  }
-}
+// influências por vértice base [[bone, w], ...] com as juntas virtuais já aplicadas
+const infl = new Array(NV);
 for (let v = 0; v < NV; v++) {
-  const l = Math.hypot(nrm[v * 3], nrm[v * 3 + 1], nrm[v * 3 + 2]) || 1;
-  nrm[v * 3] /= l;
-  nrm[v * 3 + 1] /= l;
-  nrm[v * 3 + 2] /= l;
-}
-
-// pesos finais (base compacta): top-4 + normalizados
-const infl = new Array(NB); // [[bone,weight],...]
-for (let k = 0; k < NB; k++) {
-  const v = baseList[k];
   const m = new Map(wacc[v]);
-  // normaliza
   let s = 0;
   for (const w of m.values()) s += w;
   if (s <= 0) m.set(boneIndex.get('root'), 1);
@@ -264,7 +167,6 @@ for (let k = 0; k < NB; k++) {
   for (const vb of VIRTUAL) {
     const q = Math.hypot((p[0] - vb.c[0]) / vb.r[0], (p[1] - vb.c[1]) / vb.r[1], (p[2] - vb.c[2]) / vb.r[2]);
     let w = vb.amp * (1 - smoothstep(0, 1, q));
-    // só o lado correto e a face externa
     if (vb.side && p[0] * vb.side < 0.15) w *= smoothstep(-0.2, 0.3, p[0] * vb.side);
     if (vb.nzMax !== undefined) w *= smoothstep(vb.nzMax + 0.4, vb.nzMax - 0.3, nrm[v * 3 + 2]);
     if (vb.name === 'belly') w *= smoothstep(-0.2, 0.5, nrm[v * 3 + 2]);
@@ -273,18 +175,131 @@ for (let k = 0; k < NB; k++) {
     for (const [b, bw] of m) m.set(b, bw * (1 - w));
     m.set(boneIndex.get(vb.name), w);
   }
-  infl[k] = [...m.entries()];
+  infl[v] = m;
 }
-const topN = (list, n = 4) => {
-  const l = list.slice().sort((a, b) => b[1] - a[1]).slice(0, n);
-  const s = l.reduce((a, b) => a + b[1], 0) || 1;
-  return l.map(([b, w]) => [b, w / s]);
-};
 
-// ---------------------------------------------------------------- arrays finais da malha
-const bindA = new Uint16Array(N);
-const bindB = new Uint16Array(N);
-const bindT = new Float32Array(N);
+// ---------------------------------------------------------------- subdivisão Catmull-Clark
+console.log('> subdividindo (Catmull-Clark, 1 nível)...');
+const sub1 = catmullClark(bodyQuads, NV);
+const rows = sub1.rows; // Map(base -> peso) por vértice subdividido
+const NS = rows.length;
+const evalRows = (P) => {
+  const out = new Float64Array(NS * 3);
+  for (let i = 0; i < NS; i++) {
+    let x = 0, y = 0, z = 0;
+    for (const [k, w] of rows[i]) {
+      x += P[k * 3] * w;
+      y += P[k * 3 + 1] * w;
+      z += P[k * 3 + 2] * w;
+    }
+    out[i * 3] = x; out[i * 3 + 1] = y; out[i * 3 + 2] = z;
+  }
+  return out;
+};
+const evalScalar = (arr) => {
+  const out = new Float32Array(NS);
+  for (let i = 0; i < NS; i++) {
+    let s = 0;
+    for (const [k, w] of rows[i]) s += arr[k] * w;
+    out[i] = s;
+  }
+  return out;
+};
+const PS = evalRows(Pdef);
+const armWS = { L: evalScalar(armW.L), R: evalScalar(armW.R) };
+console.log(`  ${sub1.quads.length} quads, ${NS} vértices subdivididos`);
+
+// ---------------------------------------------------------------- campos de corte
+const neckA = norm(sub(boneHead('neck03'), boneHead('neck01')));
+const neckP0 = add(boneHead('neck01'), mul(neckA, CUT.neck));
+const armCut = {};
+for (const side of ['L', 'R']) {
+  const h = boneHead(`upperarm01.${side}`);
+  const a = norm(sub(boneHead(`upperarm02.${side}`), h));
+  armCut[side] = { a, p0: add(h, mul(a, CUT.arm)) };
+}
+const F = new Float64Array(NS);
+for (let v = 0; v < NS; v++) {
+  const p = P3(PS, v);
+  let f = dot(sub(p, neckP0), neckA);
+  for (const side of ['L', 'R']) {
+    const c = armCut[side];
+    const fa = armWS[side][v] > 0.5 ? dot(sub(p, c.p0), c.a) : -1;
+    if (fa > f) f = fa;
+  }
+  F[v] = f;
+}
+
+// ---------------------------------------------------------------- triangulação (diagonal mais curta) e recorte
+const triFlat = [];
+for (const [a, b, c, d] of sub1.quads) {
+  const d02 = len(sub(P3(PS, a), P3(PS, c)));
+  const d13 = len(sub(P3(PS, b), P3(PS, d)));
+  if (d02 <= d13) triFlat.push(a, b, c, a, c, d);
+  else triFlat.push(a, b, d, b, c, d);
+}
+const cut = compactClip(clipTriangles(triFlat, F, CUT.snap));
+const N = cut.vertices.length;
+const indices = Uint16Array.from(cut.tris);
+console.log(`  malha final: ${N} vértices, ${indices.length / 3} triângulos`);
+
+// stencil de cada vértice final (vértice subdividido ou ponto numa aresta recortada)
+const finalRows = cut.vertices.map((v) => (v.t === 0 ? rows[v.a] : lerpRows(rows[v.a], rows[v.b], v.t)));
+const PSF = new Float64Array(N * 3); // posições finais na mulher padrão (dm)
+finalRows.forEach((row, i) => {
+  let x = 0, y = 0, z = 0;
+  for (const [k, w] of row) {
+    x += Pdef[k * 3] * w;
+    y += Pdef[k * 3 + 1] * w;
+    z += Pdef[k * 3 + 2] * w;
+  }
+  PSF[i * 3] = x; PSF[i * 3 + 1] = y; PSF[i * 3 + 2] = z;
+});
+
+// ---------------------------------------------------------------- base compacta
+const RULERS = {
+  bust: [8439, 8455, 8462, 8446, 8478, 8494, 8557, 8510, 8526, 8542, 10720, 10601, 10603, 10602, 10612, 10611, 10610, 10613, 10604, 10605, 10606, 3942, 3941, 3940, 3950, 3947, 3948, 3949, 3938, 3939, 3937, 4065, 1870, 1854, 1838, 1885, 1822, 1806, 1774, 1790, 1783, 1767, 1799, 8471],
+  underbust: [10750, 10744, 10724, 10725, 10748, 10722, 10640, 10642, 10641, 10651, 10650, 10649, 10652, 10643, 10644, 10645, 10646, 10647, 10648, 3988, 3987, 3986, 3985, 3984, 3983, 3982, 3992, 3989, 3990, 3991, 3980, 3981, 3979, 4067, 4098, 4073, 4072, 4094, 4100, 4082, 4088],
+  waist: [4121, 10760, 10757, 10777, 10776, 10779, 10780, 10778, 10781, 10771, 10773, 10772, 10775, 10774, 10814, 10834, 10816, 10817, 10818, 10819, 10820, 10821, 4181, 4180, 4179, 4178, 4177, 4176, 4175, 4196, 4173, 4131, 4132, 4129, 4130, 4128, 4138, 4135, 4137, 4136, 4133, 4134, 4108, 4113, 4118, 4121],
+  hips: [4341, 10968, 10969, 10971, 10970, 10967, 10928, 10927, 10925, 10926, 10923, 10924, 10868, 10875, 10861, 10862, 4228, 4227, 4226, 4242, 4234, 4294, 4293, 4296, 4295, 4297, 4298, 4342, 4345, 4346, 4344, 4343, 4361, 4341],
+  thigh: [11071, 11080, 11081, 11086, 11076, 11077, 11074, 11075, 11072, 11073, 11069, 11070, 11087, 11085, 11084, 12994, 11083, 11082, 11079, 11071],
+  knee: [11223, 11230, 11232, 11233, 11238, 11228, 11229, 11226, 11227, 11224, 11225, 11221, 11222, 11239, 11237, 11236, 13002, 11235, 11234, 11223],
+  calf: [11339, 11336, 11353, 11351, 11350, 13008, 11349, 11348, 11345, 11337, 11344, 11346, 11347, 11352, 11342, 11343, 11340, 11341, 11338, 11339],
+  ankle: [11460, 11464, 11458, 11459, 11419, 11418, 12958, 12965, 12960, 12963, 12961, 12962, 12964, 12927, 13028, 12957, 11463, 11461, 11457, 11460],
+};
+const CROWN = skel.joints['head____tail'];
+const baseNeeded = new Set();
+for (const row of finalRows) for (const k of row.keys()) baseNeeded.add(k);
+for (const b of order) {
+  const d = skel.bones[b];
+  if (!d) continue; // juntas virtuais
+  for (const j of [d.head, d.tail]) for (const v of skel.joints[j]) baseNeeded.add(v);
+}
+for (const list of Object.values(RULERS)) for (const v of list) baseNeeded.add(v);
+for (const v of CROWN) baseNeeded.add(v);
+const baseList = [...baseNeeded].sort((a, b) => a - b);
+const baseMap = new Map(baseList.map((v, i) => [v, i]));
+const NB = baseList.length;
+
+// stencils finais (CSR) com índices da base compacta e pesos quantizados em 16 bits
+const stencilStart = new Uint32Array(N + 1);
+const sIdx = [];
+const sW = [];
+finalRows.forEach((row, i) => {
+  stencilStart[i] = sIdx.length;
+  const entries = [...row.entries()].filter(([, w]) => w > 1e-6).sort((a, b) => b[1] - a[1]);
+  const total = entries.reduce((s, e) => s + e[1], 0);
+  const q = entries.map(([, w]) => Math.round((w / total) * 65535));
+  q[0] += 65535 - q.reduce((a, b) => a + b, 0); // soma exata = 1
+  entries.forEach(([k], j) => {
+    sIdx.push(baseMap.get(k));
+    sW.push(q[j]);
+  });
+});
+stencilStart[N] = sIdx.length;
+console.log(`  base compacta: ${NB} vértices; stencils: ${sIdx.length} entradas (média ${(sIdx.length / N).toFixed(1)})`);
+
+// ---------------------------------------------------------------- pesos de skinning finais
 const skinIndex = new Uint8Array(N * 4);
 const skinWeight = new Uint8Array(N * 4);
 const quantizeW = (list) => {
@@ -294,44 +309,23 @@ const quantizeW = (list) => {
     out[i] = Math.round(w * 255);
     tot += out[i];
   });
-  out[0] += 255 - tot; // ajusta no maior
+  out[0] += 255 - tot;
   return out;
 };
-for (let i = 0; i < N; i++) {
-  const v = finalList[i];
-  let list;
-  if (v < NV) {
-    const k = baseMap.get(v);
-    bindA[i] = k;
-    bindB[i] = k;
-    bindT[i] = 0;
-    list = topN(infl[k]);
-  } else {
-    const [A, B, t] = clipDesc[v - NV];
-    const ka = baseMap.get(A);
-    const kb = baseMap.get(B);
-    bindA[i] = ka;
-    bindB[i] = kb;
-    bindT[i] = t;
-    const m = new Map();
-    for (const [b, w] of infl[ka]) m.set(b, (m.get(b) || 0) + w * (1 - t));
-    for (const [b, w] of infl[kb]) m.set(b, (m.get(b) || 0) + w * t);
-    list = topN([...m.entries()]);
-  }
+finalRows.forEach((row, i) => {
+  const m = new Map();
+  for (const [k, w] of row) for (const [b, bw] of infl[k]) m.set(b, (m.get(b) || 0) + w * bw);
+  const top = [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4);
+  const s = top.reduce((a, b) => a + b[1], 0) || 1;
+  const list = top.map(([b, w]) => [b, w / s]);
   const q = quantizeW(list);
   list.forEach(([b], j) => {
     skinIndex[i * 4 + j] = b;
     skinWeight[i * 4 + j] = q[j];
   });
-}
-const indices = new Uint16Array(clipped.length * 3);
-clipped.forEach((t, i) => {
-  indices[i * 3] = finalIndex.get(t[0]);
-  indices[i * 3 + 1] = finalIndex.get(t[1]);
-  indices[i * 3 + 2] = finalIndex.get(t[2]);
 });
 
-// ---------------------------------------------------------------- laços de borda (tampas)
+// ---------------------------------------------------------------- laços de borda (Caps) e eixos de saída
 const edgeCount = new Map();
 const dirEdge = new Map();
 for (let t = 0; t < indices.length; t += 3) {
@@ -364,22 +358,36 @@ for (const s of nextOf.keys()) {
   }
   loops.push(loop);
 }
-const posOfFinal = (i) => {
-  const v = finalList[i];
-  if (v < NV) return P3(Pdef, v);
-  const [A, B, t] = clipDesc[v - NV];
-  return add(mul(P3(Pdef, A), 1 - t), mul(P3(Pdef, B), t));
-};
-for (const l of loops) {
-  const bb = [[1e9, 1e9, 1e9], [-1e9, -1e9, -1e9]];
-  for (const i of l) {
-    const p = posOfFinal(i);
-    for (let k = 0; k < 3; k++) {
-      bb[0][k] = Math.min(bb[0][k], p[k]);
-      bb[1][k] = Math.max(bb[1][k], p[k]);
-    }
+// eixo de saída (referência) de cada Cut: normal do plano de corte mais próximo do centro do laço
+const loopAxes = loops.map((loop) => {
+  const c = [0, 0, 0];
+  for (const i of loop) for (let k = 0; k < 3; k++) c[k] += PSF[i * 3 + k] / loop.length;
+  const cand = [
+    { d: Math.abs(dot(sub(c, neckP0), neckA)), a: neckA },
+    ...['L', 'R'].map((s) => ({ d: Math.abs(dot(sub(c, armCut[s].p0), armCut[s].a)), a: armCut[s].a })),
+  ].sort((x, y) => x.d - y.d);
+  return cand[0].a;
+});
+console.log(`  laços de borda (Cuts): ${loops.map((l) => l.length).join(', ')}`);
+
+// ---------------------------------------------------------------- zona de suavização do cruzamento
+// Peso 0..255 por vértice: a região entre as pernas é suavizada no runtime (a cada morph) para que o
+// tecido justo faça uma transição limpa. O busto NÃO é suavizado: o tecido marca o contorno ("tenda").
+const smoothZone = new Uint8Array(N);
+{
+  let cy = Infinity;
+  const kneeY = boneHead('lowerleg01.L')[1];
+  for (let i = 0; i < N; i++) {
+    const p = P3(PSF, i);
+    if (Math.abs(p[0]) < 0.06 && p[1] < cy && p[1] > kneeY) cy = p[1];
   }
-  console.log(`  laço ${l.length}: min ${bb[0].map((x) => x.toFixed(2))} max ${bb[1].map((x) => x.toFixed(2))}`);
+  for (let i = 0; i < N; i++) {
+    const p = P3(PSF, i);
+    const ax = Math.abs(p[0]);
+    const wc = (1 - smoothstep(0.2, 0.5, ax)) * smoothstep(cy - 0.4, cy, p[1]) * (1 - smoothstep(cy + 0.9, cy + 1.5, p[1]));
+    smoothZone[i] = Math.round(255 * wc);
+  }
+  console.log(`  zona de suavização (cruzamento): ${smoothZone.filter((x) => x > 0).length} vértices`);
 }
 
 // ---------------------------------------------------------------- esqueleto exportado
@@ -436,6 +444,17 @@ const tIdx = [];
 const tDelta = [];
 const manifest = [];
 let totalEntries = 0;
+function pushTarget(name, ids, ds, maxAbs) {
+  if (ids.length === 0) {
+    manifest.push([name, totalEntries, 0, 0]);
+    return;
+  }
+  const scale = maxAbs / 32767;
+  for (const k of ids) tIdx.push(k);
+  for (const d of ds) tDelta.push(Math.max(-32767, Math.min(32767, Math.round(d / scale))));
+  manifest.push([name, totalEntries, ids.length, scale]);
+  totalEntries += ids.length;
+}
 for (const name of targetNames) {
   const t = parseTarget(path.join(MH, 'targets', name + '.target'));
   const ids = [];
@@ -452,17 +471,128 @@ for (const name of targetNames) {
     ds.push(dx, dy, dz);
     maxAbs = Math.max(maxAbs, Math.abs(dx), Math.abs(dy), Math.abs(dz));
   }
-  if (ids.length === 0) {
-    manifest.push([name, totalEntries, 0, 0]);
-    continue;
-  }
-  const scale = maxAbs / 32767;
-  for (const k of ids) tIdx.push(k);
-  for (const d of ds) tDelta.push(Math.max(-32767, Math.min(32767, Math.round(d / scale))));
-  manifest.push([name, totalEntries, ids.length, scale]);
-  totalEntries += ids.length;
+  pushTarget(name, ids, ds, maxAbs);
 }
-console.log(`  ${targetNames.length} targets, ${totalEntries} entradas`);
+
+// ---------------------------------------------------------------- morphs procedurais
+// Volumes (busto, glúteos, coxas) e formas dos glúteos (dobra infraglútea, sulco central, caído/firme).
+// Definidos sobre a malha base (decímetros, mulher padrão); a subdivisão os suaviza. Cada alvo tem
+// versão incr (+) e decr (-, o oposto).
+const bodyVertexSet = new Set();
+for (const q of bodyQuads) for (const v of q) bodyVertexSet.add(v);
+const nipples = ['breast.L____tail', 'breast.R____tail'].map((j) => jointPos(j));
+const nippleNormals = ['breast.L____tail', 'breast.R____tail'].map((j) => nrm3(skel.joints[j][0]));
+
+const gluteWeight = (p, n, rad = [1.15, 1.45, 0.95]) => {
+  let best = { w: 0, s: 1, c: null };
+  for (const s of [1, -1]) {
+    const c = [0.9 * s, -0.55, -0.95];
+    const q = Math.hypot((p[0] - c[0]) / rad[0], (p[1] - c[1]) / rad[1], (p[2] - c[2]) / rad[2]);
+    let w = 1 - smoothstep(0, 1, q);
+    w *= smoothstep(0.4, -0.3, n[2]) * (s * p[0] > -0.1 ? 1 : 0);
+    if (w > best.w) best = { w, s, c };
+  }
+  return best;
+};
+const foldY = (ax) => -1.2 + 0.2 * smoothstep(0.3, 1.4, ax); // linha da dobra infraglútea (dm): sobe levemente para o lado
+const foldGroove = (p, n) => {
+  const ax = Math.abs(p[0]);
+  const dy = p[1] - foldY(ax);
+  const win = smoothstep(0.12, 0.45, ax) * (1 - smoothstep(1.25, 1.65, ax));
+  const back = smoothstep(0.35, -0.35, n[2]);
+  return { groove: Math.exp(-((dy / 0.2) ** 2)) * win * back, roll: Math.exp(-(((dy - 0.42) / 0.3) ** 2)) * win * back };
+};
+
+const procedural = {
+  'bust-volume': (v, p, n) => {
+    let best = null;
+    for (let s = 0; s < 2; s++) {
+      const c = sub(nipples[s], mul(nippleNormals[s], 0.4));
+      const r = sub(p, c);
+      const w = 1 - smoothstep(0.25, 1.35, len(r));
+      if (w <= 0 || dot(n, nippleNormals[s]) < -0.1) continue;
+      const dir = norm(add(mul(n, 0.45), mul(norm(r), 0.55)));
+      const amp = 0.36 * w * smoothstep(-0.1, 0.45, dot(n, nippleNormals[s]));
+      if (!best || amp > best.amp) best = { amp, dir };
+    }
+    return best && best.amp > 1e-4 ? mul(best.dir, best.amp) : null;
+  },
+  'glutes-volume': (v, p, n) => {
+    const g = gluteWeight(p, n, [1.05, 1.2, 0.9]);
+    if (g.w <= 0) return null;
+    const dir = norm([n[0] * 0.5, n[1] * 0.2 + 0.2, n[2]]);
+    return mul(dir, 0.32 * g.w);
+  },
+  'thighs-volume': (v, p, n) => {
+    let best = null;
+    for (const s of [1, -1]) {
+      const rr = [p[0] - 1.45 * s, 0, p[2] - 0.4];
+      const q = Math.hypot((p[0] - 1.45 * s) / 1.0, (p[1] + 2.2) / 1.65, (p[2] - 0.4) / 1.1);
+      let w = 1 - smoothstep(0, 1, q);
+      if (s * p[0] < 0.55) w *= smoothstep(0.35, 0.8, s * p[0]);
+      if (w <= 0) continue;
+      const amp = 0.3 * w;
+      if (!best || amp > best.amp) best = { amp, dir: norm(add(mul(norm(rr), 0.7), mul(n, 0.3))) };
+    }
+    return best && best.amp > 1e-4 ? mul(best.dir, best.amp) : null;
+  },
+  // massa dos glúteos desce (caído) com o polo superior achatado e o inferior pendendo para trás
+  'glutes-sag': (v, p, n) => {
+    const g = gluteWeight(p, n);
+    if (g.w <= 0) return null;
+    const yr = (p[1] - g.c[1]) / 0.7;
+    const upper = smoothstep(-0.2, 0.7, yr);
+    const lower = smoothstep(0.2, -0.8, yr);
+    const d = [0.04 * g.s * g.w, -0.3 * g.w, -0.05 * g.w * lower];
+    return add(d, mul(n, -0.07 * g.w * upper));
+  },
+  'glutes-lift': (v, p, n) => {
+    const g = gluteWeight(p, n);
+    if (g.w <= 0) return null;
+    const yr = (p[1] - g.c[1]) / 0.7;
+    const upper = smoothstep(-0.2, 0.7, yr);
+    const d = [-0.02 * g.s * g.w, 0.22 * g.w, -0.03 * g.w * upper];
+    return add(d, mul(n, 0.05 * g.w * upper));
+  },
+  // dobra infraglútea: sulco sob o glúteo + leve "rolo" acima dela
+  'glutes-fold': (v, p, n) => {
+    const f = foldGroove(p, n);
+    if (f.groove < 1e-3 && f.roll < 1e-3) return null;
+    return mul(n, -0.12 * f.groove + 0.05 * f.roll);
+  },
+  // sulco central (entre os glúteos)
+  'glutes-cleft': (v, p, n) => {
+    const g = Math.exp(-((p[0] / 0.2) ** 2));
+    const win = smoothstep(-1.35, -1.0, p[1]) * (1 - smoothstep(0.1, 0.45, p[1]));
+    const back = smoothstep(0.35, -0.35, n[2]);
+    const w = g * win * back;
+    return w < 1e-3 ? null : mul(n, -0.1 * w);
+  },
+};
+function emitProcedural(name, fn, sign) {
+  const ids = [];
+  const ds = [];
+  let maxAbs = 0;
+  for (const v of baseList) {
+    if (!bodyVertexSet.has(v)) continue;
+    const d = fn(v, P3(Pdef, v), nrm3(v));
+    if (!d) continue;
+    ids.push(baseMap.get(v));
+    for (const x of d) {
+      ds.push(x * SCALE * sign);
+      maxAbs = Math.max(maxAbs, Math.abs(x * SCALE));
+    }
+  }
+  pushTarget(name, ids, ds, maxAbs);
+  targetNames.push(name);
+  console.log(`  ${name}: ${ids.length} vértices`);
+}
+for (const key of ['bust-volume', 'glutes-volume', 'thighs-volume', 'glutes-fold', 'glutes-cleft']) {
+  emitProcedural(`custom/${key}-incr`, procedural[key], +1);
+  emitProcedural(`custom/${key}-decr`, procedural[key], -1);
+}
+emitProcedural('custom/glutes-sag-incr', procedural['glutes-sag'], +1);
+emitProcedural('custom/glutes-sag-decr', procedural['glutes-lift'], +1);
 
 // ---------------------------------------------------------------- escrita
 const pad4 = (n) => (n + 3) & ~3;
@@ -479,18 +609,17 @@ function packSections(sections) {
 }
 const basePosCompact = new Float32Array(NB * 3);
 baseList.forEach((v, k) => {
-  basePosCompact[k * 3] = basePos[v * 3] * SCALE;
-  basePosCompact[k * 3 + 1] = basePos[v * 3 + 1] * SCALE;
-  basePosCompact[k * 3 + 2] = basePos[v * 3 + 2] * SCALE;
+  for (let c = 0; c < 3; c++) basePosCompact[k * 3 + c] = basePos[v * 3 + c] * SCALE;
 });
 const body = packSections([
   ['basePos', basePosCompact],
-  ['bindA', bindA],
-  ['bindB', bindB],
-  ['bindT', bindT],
+  ['stencilStart', stencilStart],
+  ['stencilIdx', Uint16Array.from(sIdx)],
+  ['stencilW16', Uint16Array.from(sW)],
   ['skinIndex', skinIndex],
   ['skinWeight', skinWeight],
   ['indices', indices],
+  ['smoothZone', smoothZone],
 ]);
 const tgt = packSections([
   ['idx', Uint16Array.from(tIdx)],
@@ -498,14 +627,16 @@ const tgt = packSections([
 ]);
 
 const bodyJson = {
-  version: 1,
+  version: 2,
   units: 'm',
+  subdivision: 1,
   baseCount: NB,
   vertCount: N,
   triCount: indices.length / 3,
   sections: body.meta,
   bones: bonesOut,
   loops,
+  loopAxes: loopAxes.map((a) => a.map((x) => +x.toFixed(5))),
   cut: CUT,
   rulers: Object.fromEntries(Object.entries(RULERS).map(([k, l]) => [k, l.map((v) => baseMap.get(v))])),
   crown: CROWN.map((v) => baseMap.get(v)),
@@ -517,4 +648,4 @@ fs.writeFileSync(path.join(OUT, 'body.json'), JSON.stringify(bodyJson));
 fs.writeFileSync(path.join(OUT, 'body.bin.gz'), gz(body.buf));
 fs.writeFileSync(path.join(OUT, 'targets.json'), JSON.stringify(targetsJson));
 fs.writeFileSync(path.join(OUT, 'targets.bin.gz'), gz(tgt.buf));
-console.log(`> ok: body.bin ${(body.buf.length / 1024).toFixed(0)} KB (gz ${(gz(body.buf).length / 1024).toFixed(0)} KB), targets.bin ${(tgt.buf.length / 1024).toFixed(0)} KB (gz ${(gz(tgt.buf).length / 1024).toFixed(0)} KB)`);
+console.log(`> ok: body.bin ${(body.buf.length / 1024).toFixed(0)} KB (gz ${(gz(body.buf).length / 1024).toFixed(0)} KB), targets.bin ${(tgt.buf.length / 1024).toFixed(0)} KB (gz ${(gz(tgt.buf).length / 1024).toFixed(0)} KB), ${targetNames.length} targets`);

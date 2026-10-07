@@ -8,7 +8,7 @@ export class Caps {
   constructor(pkg, bodyPos) {
     this.pkg = pkg;
     this.loops = pkg.meta.loops;
-    const { skinIndex, skinWeight, bindA, bindB } = pkg;
+    const { skinIndex, skinWeight } = pkg;
     const verts = [];
     const tris = [];
     this.layout = []; // por laço: {start, n}
@@ -75,9 +75,8 @@ export class Caps {
     this.index = Uint16Array.from(tris);
     this.skinIndex = Uint8Array.from(skinI);
     this.skinWeight = Float32Array.from(skinW);
-    this.bindA = bindA;
-    this.bindB = bindB;
-    this.axisHint = this.loops.map((loop) => loop.map((v) => [bindA[v], bindB[v]]));
+    this.refAxes = pkg.meta.loopAxes.map((a) => new THREE.Vector3(...a));
+    this.signs = this.loops.map(() => 1);
     this.geometry = new THREE.BufferGeometry();
     this.geometry.setAttribute('position', new THREE.BufferAttribute(this.position, 3).setUsage(THREE.DynamicDrawUsage));
     this.geometry.setAttribute('normal', new THREE.BufferAttribute(this.normal, 3).setUsage(THREE.DynamicDrawUsage));
@@ -85,43 +84,49 @@ export class Caps {
     this.geometry.setAttribute('skinWeight', new THREE.Float32BufferAttribute(this.skinWeight, 4));
     this.geometry.setIndex(new THREE.BufferAttribute(this.index, 1));
     this.flipped = false;
-    this.update(bodyPos, pkg.basePos);
-    // orientação: normal do primeiro triângulo deve coincidir com o eixo de saída
-    const lay = this.layout[0];
-    const i0 = this.index;
-    const P = this.position;
-    const a = new THREE.Vector3().fromArray(P, i0[0] * 3);
-    const b = new THREE.Vector3().fromArray(P, i0[1] * 3);
-    const c = new THREE.Vector3().fromArray(P, i0[2] * 3);
-    const nrm = b.sub(a).cross(c.sub(a));
-    const cen = new THREE.Vector3().fromArray(P, lay.center * 3);
-    const outward = cen.sub(a.fromArray(P, lay.start * 3));
-    void outward;
-    // eixo explícito (mesmo cálculo do update)
-    const axis = this._axis(0, pkg.basePos);
-    if (nrm.dot(axis) < 0) {
-      for (let t = 0; t < i0.length; t += 3) {
-        const tmp = i0[t + 1];
-        i0[t + 1] = i0[t + 2];
-        i0[t + 2] = tmp;
+    // sinal do normal de Newell de cada laço em relação ao eixo de saída de referência
+    this.loops.forEach((_, li) => {
+      this.signs[li] = 1;
+      this.signs[li] = Math.sign(this._axis(li, bodyPos).dot(this.refAxes[li])) || 1;
+    });
+    this.update(bodyPos);
+    // orientação dos triângulos: a normal do primeiro triângulo deve coincidir com o eixo de saída
+    {
+      const I = this.index;
+      const P = this.position;
+      const a = new THREE.Vector3().fromArray(P, I[0] * 3);
+      const b = new THREE.Vector3().fromArray(P, I[1] * 3);
+      const c = new THREE.Vector3().fromArray(P, I[2] * 3);
+      const nrm = b.sub(a).cross(c.sub(a));
+      if (nrm.dot(this._axis(0, bodyPos)) < 0) {
+        for (let t = 0; t < I.length; t += 3) {
+          const tmp = I[t + 1];
+          I[t + 1] = I[t + 2];
+          I[t + 2] = tmp;
+        }
+        this.geometry.index.needsUpdate = true;
       }
-      this.geometry.index.needsUpdate = true;
     }
-    this.update(bodyPos, pkg.basePos);
+    this.update(bodyPos);
   }
 
-  _axis(li, P) {
-    const ax = new THREE.Vector3();
-    for (const [A, B] of this.axisHint[li]) {
-      ax.x += P[B * 3] - P[A * 3];
-      ax.y += P[B * 3 + 1] - P[A * 3 + 1];
-      ax.z += P[B * 3 + 2] - P[A * 3 + 2];
+  /** Eixo de saída do Cut: normal de Newell do laço (sinal fixado pela referência). */
+  _axis(li, pos) {
+    const loop = this.loops[li];
+    const n = loop.length;
+    let nx = 0, ny = 0, nz = 0;
+    for (let i = 0; i < n; i++) {
+      const a = loop[i] * 3;
+      const b = loop[(i + 1) % n] * 3;
+      nx += (pos[a + 1] - pos[b + 1]) * (pos[a + 2] + pos[b + 2]);
+      ny += (pos[a + 2] - pos[b + 2]) * (pos[a] + pos[b]);
+      nz += (pos[a] - pos[b]) * (pos[a + 1] + pos[b + 1]);
     }
-    return ax.normalize();
+    return new THREE.Vector3(nx, ny, nz).normalize().multiplyScalar(this.signs[li]);
   }
 
-  /** bodyPos: posições dos vértices do corpo; P: posições base morfadas (para o eixo do Cut). */
-  update(bodyPos, P) {
+  /** bodyPos: posições dos vértices do corpo (a malha dos Caps nasce dos laços de borda). */
+  update(bodyPos) {
     const pos = this.position;
     const c = new THREE.Vector3();
     const t = new THREE.Vector3();
@@ -130,7 +135,7 @@ export class Caps {
       c.set(0, 0, 0);
       for (const v of loop) c.x += bodyPos[v * 3], c.y += bodyPos[v * 3 + 1], c.z += bodyPos[v * 3 + 2];
       c.multiplyScalar(1 / n);
-      const axis = this._axis(li, P);
+      const axis = this._axis(li, bodyPos);
       let radius = 0;
       for (const v of loop) radius += Math.hypot(bodyPos[v * 3] - c.x, bodyPos[v * 3 + 1] - c.y, bodyPos[v * 3 + 2] - c.z);
       radius /= n;

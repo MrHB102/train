@@ -29,9 +29,13 @@ function readSections(meta, buf) {
 export function parsePackage(body, targets, bodyBuf, targetBuf) {
   const b = readSections(body.sections, bodyBuf);
   const t = readSections(targets.sections, targetBuf);
+  // pesos dos stencils guardados em 16 bits -> float
+  const stencilW = new Float32Array(b.stencilW16.length);
+  for (let i = 0; i < stencilW.length; i++) stencilW[i] = b.stencilW16[i] / 65535;
   return {
     meta: body,
     ...b,
+    stencilW,
     targets: {
       names: targets.targets.map((x) => x[0]),
       offset: Uint32Array.from(targets.targets.map((x) => x[1])),

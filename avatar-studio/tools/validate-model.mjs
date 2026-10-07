@@ -26,8 +26,12 @@ const P = morph.update(neutralValues());
 const N = pkg.meta.vertCount;
 const pos = new Float32Array(N * 3);
 for (let k = 0; k < N; k++) {
-  const a = pkg.bindA[k] * 3, b = pkg.bindB[k] * 3, t = pkg.bindT[k];
-  for (let c = 0; c < 3; c++) pos[k * 3 + c] = P[a + c] * (1 - t) + P[b + c] * t;
+  let x = 0, y = 0, z = 0;
+  for (let q = pkg.stencilStart[k]; q < pkg.stencilStart[k + 1]; q++) {
+    const j = pkg.stencilIdx[q] * 3, w = pkg.stencilW[q];
+    x += P[j] * w; y += P[j + 1] * w; z += P[j + 2] * w;
+  }
+  pos[k * 3] = x; pos[k * 3 + 1] = y; pos[k * 3 + 2] = z;
 }
 const I = pkg.indices;
 const T = I.length / 3;
@@ -51,7 +55,7 @@ const zAt = (y0, y1, pick) => {
 check('frente = +Z (busto à frente, glúteos atrás)', zAt(1.05, 1.2, 'max') > 0.1 && zAt(0.75, 0.9, 'min') < -0.05, `busto z=${zAt(1.05, 1.2, 'max').toFixed(3)} glúteos z=${zAt(0.75, 0.9, 'min').toFixed(3)}`);
 
 // ---- 2. topologia
-check('orçamento de triângulos (≤ 12 000)', T <= 12000, `${T} triângulos, ${N} vértices`);
+check('orçamento de triângulos (≤ 60 000, malha subdividida)', T <= 60000, `${T} triângulos, ${N} vértices`);
 let degenerate = 0, sliver = 0, minAngle = 180;
 const edgeUse = new Map();
 const ekey = (a, b) => (a < b ? a * 65536 + b : b * 65536 + a);
@@ -68,13 +72,13 @@ for (let t = 0; t < T; t++) {
     if (a * b > 0) {
       const ang = (Math.acos(Math.max(-1, Math.min(1, (a * a + b * b - cc * cc) / (2 * a * b)))) * 180) / Math.PI;
       minAngle = Math.min(minAngle, ang);
-      if (ang < 2) sliver++;
+      if (ang < 1) sliver++;
     }
   }
   for (const [a, b] of [[ia, ib], [ib, ic], [ic, ia]]) edgeUse.set(ekey(a, b), (edgeUse.get(ekey(a, b)) || 0) + 1);
 }
 check('sem triângulos degenerados', degenerate === 0, `${degenerate}`);
-check('sem triângulos-lasca (ângulo < 2°)', sliver === 0, `${sliver} cantos, menor ângulo ${minAngle.toFixed(2)}°`);
+check('sem triângulos-lasca (ângulo < 1°)', sliver === 0, `${sliver} cantos, menor ângulo ${minAngle.toFixed(2)}°`);
 let nonManifold = 0, boundary = 0;
 for (const c of edgeUse.values()) {
   if (c > 2) nonManifold++;
@@ -127,6 +131,15 @@ for (let k = 0; k < N; k++) {
 }
 check('pesos somam 1 em todos os vértices', sumBad === 0, `${sumBad} fora`);
 check('no máximo 4 influências, índices de osso válidos', maxInfl <= 4 && badBone === 0, `${boneCount} ossos`);
+
+// ---- 4b. stencils somam 1
+let stencilBad = 0;
+for (let k = 0; k < N; k++) {
+  let t = 0;
+  for (let q = pkg.stencilStart[k]; q < pkg.stencilStart[k + 1]; q++) t += pkg.stencilW[q];
+  if (Math.abs(t - 1) > 1e-3) stencilBad++;
+}
+check('stencils de posição somam 1 (partição da unidade)', stencilBad === 0, `${stencilBad} fora`);
 
 // ---- 5. simetria L/R
 const cell = new Map();

@@ -69,7 +69,7 @@ macro('proportions', 'general', L('Proporções (comuns ↔ ideais)', 'Proportio
 macro('ancestry.african', 'general', L('Morfologia africana', 'African morphology'), { neutral: 1 / 3, natural: [0, 1], extended: [0, 1], ancestry: true });
 macro('ancestry.asian', 'general', L('Morfologia asiática', 'Asian morphology'), { neutral: 1 / 3, natural: [0, 1], extended: [0, 1], ancestry: true });
 macro('ancestry.caucasian', 'general', L('Morfologia caucasiana', 'Caucasian morphology'), { neutral: 1 / 3, natural: [0, 1], extended: [0, 1], ancestry: true });
-macro('bust.size', 'bust', L('Tamanho do busto', 'Bust size'), { region: 'bust', neutral: 0.5, natural: [0, 1], extended: [0, 1.4] });
+macro('bust.size', 'bust', L('Tamanho do busto', 'Bust size'), { region: 'bust', neutral: 0.5, natural: [0, 1], extended: [0, 1.3] });
 macro('bust.firmness', 'bust', L('Firmeza do busto', 'Bust firmness'), { region: 'bust', neutral: 0.5, natural: [0, 1], extended: [0, 1.3] });
 
 // ------------------------------------------------------------------ Silhouette
@@ -87,6 +87,7 @@ detail('bust.height', 'bust', L('Altura do busto', 'Bust height'), between('brea
 detail('bust.spacing', 'bust', L('Separação', 'Spacing'), dec('breast', 'breast-dist'));
 detail('bust.projection', 'bust', L('Projeção / ponta', 'Projection / point'), dec('breast', 'breast-point'));
 detail('bust.upperFullness', 'bust', L('Volume superior', 'Upper fullness'), between('breast', 'breast-volume-vert', 'down', 'up'));
+detail('bust.extraVolume', 'bust', L('Volume extra do busto', 'Extra bust volume'), { neg: ['custom/bust-volume-decr'], pos: ['custom/bust-volume-incr'] }, { natural: [-0.6, 1], extended: [-1, 1.8] });
 detail('bust.circumference', 'bust', L('Contorno do busto', 'Bust circumference'), dec('measure', 'measure-bust-circ'));
 detail('bust.underbust', 'bust', L('Contorno sob o busto', 'Underbust circumference'), dec('measure', 'measure-underbust-circ'));
 detail('bust.asymmetry', 'bust', L('Assimetria', 'Asymmetry'), { neg: ['asym/asymm-breast-1-l'], pos: ['asym/asymm-breast-1-r'] }, { natural: [-0.6, 0.6], extended: [-1, 1] });
@@ -125,9 +126,18 @@ detail('hips.circumference', 'hips', L('Contorno do quadril', 'Hip circumference
 detail('hips.forward', 'hips', L('Inclinação pélvica', 'Pelvic tilt'), between('hip', 'hip-trans', 'backward', 'forward'));
 detail('hips.lift', 'hips', L('Posição vertical', 'Vertical position'), between('hip', 'hip-trans', 'down', 'up'));
 detail('hips.tone', 'hips', L('Definição pélvica', 'Pelvic tone'), dec('pelvis', 'pelvis-tone'));
-detail('glutes.volume', 'glutes', L('Volume dos glúteos', 'Glute volume'), dec('buttocks', 'buttocks-volume'), { natural: [-1, 1], extended: [-1.4, 1.9] });
+detail('glutes.volume', 'glutes', L('Tamanho dos glúteos', 'Glute size'), dec('buttocks', 'buttocks-volume'), { natural: [-1, 1], extended: [-1.4, 1.7] });
+// formas dos glúteos (morphs procedurais): firmeza, dobra infraglútea e sulco central
+detail('glutes.sag', 'glutes', L('Firmeza (empinado ↔ caído)', 'Firmness (perky ↔ sagging)'), {
+  neg: [['custom/glutes-sag-decr', 1], ['custom/glutes-fold-decr', 0.35]],
+  pos: [['custom/glutes-sag-incr', 1], ['custom/glutes-fold-incr', 0.7]],
+}, { natural: [-1, 1], extended: [-1.4, 1.6] });
+detail('glutes.fold', 'glutes', L('Dobra sob o glúteo', 'Gluteal fold'), { neg: ['custom/glutes-fold-decr'], pos: ['custom/glutes-fold-incr'] }, { natural: [-0.6, 1], extended: [-1, 1.7] });
+detail('glutes.cleft', 'glutes', L('Sulco central', 'Central cleft'), { neg: ['custom/glutes-cleft-decr'], pos: ['custom/glutes-cleft-incr'] }, { natural: [-0.6, 1], extended: [-1, 1.7] });
+detail('glutes.extraVolume', 'glutes', L('Volume extra (arredondar)', 'Extra volume (rounder)'), { neg: ['custom/glutes-volume-decr'], pos: ['custom/glutes-volume-incr'] }, { natural: [-0.6, 1], extended: [-1, 1.8] });
 
 // ------------------------------------------------------------------ Legs
+detail('thighs.extraVolume', 'thighs', L('Volume extra das coxas', 'Extra thigh volume'), { neg: ['custom/thighs-volume-decr'], pos: ['custom/thighs-volume-incr'] }, { natural: [-0.6, 1], extended: [-1, 1.8] });
 detail('thighs.fullness', 'thighs', L('Volume das coxas', 'Thigh fullness'), lr('upperleg-fat'));
 detail('thighs.muscle', 'thighs', L('Definição das coxas', 'Thigh muscle'), lr('upperleg-muscle'));
 detail('thighs.width', 'thighs', L('Largura das coxas', 'Thigh width'), lr('upperleg-scale-horiz'));
@@ -170,7 +180,7 @@ export const TRAIT_GROUPS = [
 /** Todos os nomes de Morph Target citados pelos Detail Traits (para validar contra o pacote). */
 export function detailTargetNames() {
   const s = new Set();
-  for (const t of TRAITS) if (t.kind === 'detail') for (const n of [...t.neg, ...t.pos]) s.add(n);
+  for (const t of TRAITS) if (t.kind === 'detail') for (const n of [...t.neg, ...t.pos]) s.add(typeof n === 'string' ? n : n[0]);
   return [...s];
 }
 

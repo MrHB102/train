@@ -4,6 +4,7 @@ import { MorphEngine } from './morph.js';
 import { Rig } from './rig.js';
 import { Caps } from './caps.js';
 import { neutralValues, normalizeAncestry } from '../domain/traits.js';
+import { neutralDials, effectiveValues } from '../domain/dials.js';
 
 export class Body {
   constructor(pkg) {
@@ -11,6 +12,7 @@ export class Body {
     this.morph = new MorphEngine(pkg);
     this.rig = new Rig(pkg);
     this.values = neutralValues();
+    this.dials = neutralDials();
     this.N = pkg.meta.vertCount;
     this.pos = new Float32Array(this.N * 3); // posições do corpo na pose de repouso (m)
     this.normals = new Float32Array(this.N * 3);
@@ -36,7 +38,16 @@ export class Body {
     this.mesh.receiveShadow = true;
     this.group.add(this.mesh);
 
+    this.buildSmoothing();
     this.rebuild();
+    // estado de referência (Traits neutros): as roupas são cortadas e coladas sobre ele (ADR 0005)
+    this.reference = {
+      P: Float32Array.from(this.morph.positions),
+      pos: Float32Array.from(this.pos),
+      normals: Float32Array.from(this.normals),
+      heads: this.rig.headWorld.map((v) => v.clone()),
+      tails: this.rig.tailWorld.map((v) => v.clone()),
+    };
     this.mesh.bind(this.rig.skeleton, new THREE.Matrix4());
 
     this.caps = new Caps(pkg, this.pos);
@@ -63,32 +74,83 @@ export class Body {
     return this.values;
   }
 
+  /** Atualiza a posição de Dials (parcial) e recalcula o Body. */
+  setDials(partial) {
+    this.dials = { ...this.dials, ...partial };
+    this.rebuild();
+    return this.dials;
+  }
+
+  /** Valores efetivos (Traits + Dials) que alimentam o motor de morph. */
+  effective() {
+    return effectiveValues(this.values, this.dials);
+  }
+
   rebuild() {
-    const P = this.morph.update(this.values);
-    const { bindA, bindB, bindT } = this.pkg;
+    const P = this.morph.update(this.effective());
+    const { stencilStart, stencilIdx, stencilW } = this.pkg;
     const pos = this.pos;
+    // posição de cada vértice da malha subdividida/cortada = combinação linear dos vértices base
     for (let k = 0; k < this.N; k++) {
-      const a = bindA[k] * 3;
-      const b = bindB[k] * 3;
-      const t = bindT[k];
-      if (t === 0) {
-        pos[k * 3] = P[a];
-        pos[k * 3 + 1] = P[a + 1];
-        pos[k * 3 + 2] = P[a + 2];
-      } else {
-        const s = 1 - t;
-        pos[k * 3] = P[a] * s + P[b] * t;
-        pos[k * 3 + 1] = P[a + 1] * s + P[b + 1] * t;
-        pos[k * 3 + 2] = P[a + 2] * s + P[b + 2] * t;
+      let x = 0, y = 0, z = 0;
+      for (let q = stencilStart[k], e = stencilStart[k + 1]; q < e; q++) {
+        const j = stencilIdx[q] * 3;
+        const w = stencilW[q];
+        x += P[j] * w;
+        y += P[j + 1] * w;
+        z += P[j + 2] * w;
       }
+      pos[k * 3] = x;
+      pos[k * 3 + 1] = y;
+      pos[k * 3 + 2] = z;
     }
+    this.applySmoothing(pos);
     this.computeNormals();
     this.rig.updateRest(P, pos);
     this.geometry.attributes.position.needsUpdate = true;
     this.geometry.attributes.normal.needsUpdate = true;
-    if (this.caps) this.caps.update(pos, P);
+    if (this.caps) this.caps.update(pos);
     this.measureFloor();
     this.listeners.forEach((fn) => fn(this));
+  }
+
+  /** Suavização "manequim" (mamilos e cruzamento): vizinhança dos vértices da zona. */
+  buildSmoothing() {
+    const zone = this.pkg.smoothZone;
+    const I = this.pkg.indices;
+    const nb = new Map();
+    for (let v = 0; v < this.N; v++) if (zone[v]) nb.set(v, new Set());
+    for (let t = 0; t < I.length; t += 3) {
+      for (let e = 0; e < 3; e++) {
+        const a = I[t + e];
+        const s = nb.get(a);
+        if (s) {
+          s.add(I[t + ((e + 1) % 3)]);
+          s.add(I[t + ((e + 2) % 3)]);
+        }
+      }
+    }
+    this.smoothList = [...nb.keys()];
+    this.smoothNb = this.smoothList.map((v) => [...nb.get(v)]);
+    this.smoothWeight = this.smoothList.map((v) => zone[v] / 255);
+  }
+
+  applySmoothing(pos, iterations = 24) {
+    const list = this.smoothList;
+    for (let it = 0; it < iterations; it++) {
+      for (let i = 0; i < list.length; i++) {
+        const v = list[i] * 3;
+        const nb = this.smoothNb[i];
+        let x = 0, y = 0, z = 0;
+        for (const q of nb) {
+          x += pos[q * 3]; y += pos[q * 3 + 1]; z += pos[q * 3 + 2];
+        }
+        const w = this.smoothWeight[i] * 0.6 / nb.length;
+        pos[v] += x * w - pos[v] * 0.6 * this.smoothWeight[i];
+        pos[v + 1] += y * w - pos[v + 1] * 0.6 * this.smoothWeight[i];
+        pos[v + 2] += z * w - pos[v + 2] * 0.6 * this.smoothWeight[i];
+      }
+    }
   }
 
   computeNormals() {

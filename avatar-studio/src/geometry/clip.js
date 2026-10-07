@@ -23,6 +23,7 @@ export function clipTriangles(tris, F, snap = 0) {
     return r;
   };
   const out = [];
+  const srcTri = [];
   for (let t = 0; t < tris.length; t += 3) {
     const tri = [tris[t], tris[t + 1], tris[t + 2]];
     const poly = [];
@@ -37,14 +38,17 @@ export function clipTriangles(tris, F, snap = 0) {
     }
     const clean = poly.filter((v, i) => v !== poly[(i + poly.length - 1) % poly.length]);
     if (clean.length < 3) continue;
-    for (let i = 1; i < clean.length - 1; i++) out.push(clean[0], clean[i], clean[i + 1]);
+    for (let i = 1; i < clean.length - 1; i++) {
+      out.push(clean[0], clean[i], clean[i + 1]);
+      srcTri.push(t / 3);
+    }
   }
-  return { tris: out, clipVerts, count: n };
+  return { tris: out, clipVerts, count: n, srcTri };
 }
 
 /** Compacta: retorna os vértices usados (originais e novos) e os triângulos reindexados. */
 export function compactClip(res) {
-  const { tris, clipVerts, count: n } = res;
+  const { tris, clipVerts, count: n, srcTri } = res;
   const used = new Set(tris);
   const list = [...used].sort((a, b) => a - b);
   const remap = new Map(list.map((v, i) => [v, i]));
@@ -52,5 +56,6 @@ export function compactClip(res) {
     vertices: list.map((v) => (v < n ? { a: v, b: v, t: 0 } : { a: clipVerts[v - n][0], b: clipVerts[v - n][1], t: clipVerts[v - n][2] })),
     tris: Uint32Array.from(tris, (v) => remap.get(v)),
     sourceIndex: list,
+    srcTri: Uint32Array.from(srcTri),
   };
 }

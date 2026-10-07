@@ -75,9 +75,10 @@ export class MorphEngine {
       if (!v) continue;
       const list = v < 0 ? t.neg : t.pos;
       const f = Math.abs(v);
-      for (const name of list) {
+      for (const entry of list) {
+        const name = typeof entry === 'string' ? entry : entry[0];
         const i = this.index.get(name);
-        if (i !== undefined) w[i] += f;
+        if (i !== undefined) w[i] += f * (typeof entry === 'string' ? 1 : entry[1]);
       }
     }
     return w;
