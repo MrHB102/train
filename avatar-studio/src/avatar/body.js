@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { MorphEngine } from './morph.js';
 import { Rig } from './rig.js';
 import { Caps } from './caps.js';
+import { Cavity } from './cavity.js';
 import { neutralValues, normalizeAncestry } from '../domain/traits.js';
 import { neutralDials, effectiveValues } from '../domain/dials.js';
 
@@ -29,6 +30,9 @@ export class Body {
     g.setAttribute('skinIndex', new THREE.Uint8BufferAttribute(pkg.skinIndex, 4));
     g.setAttribute('skinWeight', new THREE.Uint8BufferAttribute(pkg.skinWeight, 4, true));
     g.setIndex(new THREE.BufferAttribute(pkg.indices, 1));
+    this.cavity = new Cavity(pkg.indices, this.N);
+    this.cav = new Float32Array(this.N);
+    g.setAttribute('aCav', new THREE.BufferAttribute(this.cav, 1).setUsage(THREE.DynamicDrawUsage));
     this.geometry = g;
 
     this.mesh = new THREE.SkinnedMesh(g, new THREE.MeshStandardMaterial({ color: 0xd7a48e, roughness: 0.55 }));
@@ -52,9 +56,13 @@ export class Body {
     // coordenadas de referência para texturas procedurais ancoradas na pele
     g.setAttribute('aRest', new THREE.BufferAttribute(Float32Array.from(this.reference.pos), 3));
     this.mesh.bind(this.rig.skeleton, new THREE.Matrix4());
+    this.buildBustSides(this.reference.pos);
 
     this.caps = new Caps(pkg, this.pos);
-    this.capsMesh = new THREE.SkinnedMesh(this.caps.geometry, new THREE.MeshStandardMaterial({ color: 0x23232b, roughness: 0.35, metalness: 0.2 }));
+    this.capsMesh = new THREE.SkinnedMesh(
+      this.caps.geometry,
+      new THREE.MeshPhysicalMaterial({ color: 0xc9c3be, roughness: 0.5, metalness: 0, sheen: 0.4, sheenRoughness: 0.6, sheenColor: new THREE.Color(0xffffff), clearcoat: 0.15, clearcoatRoughness: 0.4 })
+    );
     this.capsMesh.name = 'caps';
     this.capsMesh.frustumCulled = false;
     this.capsMesh.castShadow = true;
@@ -90,7 +98,8 @@ export class Body {
   }
 
   rebuild() {
-    const P = this.morph.update(this.effective());
+    const eff = this.effective();
+    const P = this.morph.update(eff);
     const { stencilStart, stencilIdx, stencilW } = this.pkg;
     const pos = this.pos;
     // posição de cada vértice da malha subdividida/cortada = combinação linear dos vértices base
@@ -107,9 +116,12 @@ export class Body {
       pos[k * 3 + 1] = y;
       pos[k * 3 + 2] = z;
     }
-    this.applyThighContact(pos, this.effective()['thighs.contact'] || 0);
+    this.applyThighContact(pos, eff['thighs.contact'] || 0);
+    this.applyBustContact(pos, eff['bust.contact'] ?? 1);
     this.applySmoothing(pos);
     this.computeNormals();
+    this.cavity.update(pos, this.normals, this.cav);
+    this.geometry.attributes.aCav.needsUpdate = true;
     this.rig.updateRest(P, pos);
     this.geometry.attributes.position.needsUpdate = true;
     this.geometry.attributes.normal.needsUpdate = true;
@@ -152,6 +164,46 @@ export class Body {
         const soft = d > s * 4 ? d : s * Math.log1p(Math.exp(d / s));
         const nx = margin + soft;
         pos[v * 3] = nx * side;
+      }
+    }
+  }
+
+  /**
+   * Lado (+1 esquerda, -1 direita) e proximidade do mamilo de cada vértice da frente do tórax, a partir da
+   * forma de referência. Serve ao contato entre os seios: nenhuma massa atravessa a linha central.
+   */
+  buildBustSides(refPos) {
+    const rig = this.rig;
+    const nip = ['L', 'R'].map((s) => rig.tailWorld[rig.index.get(`breast.${s}`)].clone());
+    const yN = (nip[0].y + nip[1].y) / 2;
+    this.bustSide = new Int8Array(this.N);
+    this.bustWeight = new Float32Array(this.N);
+    for (let v = 0; v < this.N; v++) {
+      const x = refPos[v * 3], y = refPos[v * 3 + 1], z = refPos[v * 3 + 2];
+      if (z < 0 || y < yN - 0.13 || y > yN + 0.15 || Math.abs(x) < 0.0015) continue;
+      const n = x > 0 ? nip[0] : nip[1];
+      const d = Math.hypot(x - n.x, y - n.y, z - n.z);
+      const t = Math.min(1, Math.max(0, (d - 0.075) / (0.2 - 0.075)));
+      const w = 1 - t * t * (3 - 2 * t);
+      this.bustSide[v] = x > 0 ? 1 : -1;
+      this.bustWeight[v] = w;
+    }
+  }
+
+  /** Contato entre os seios: formam o sulco central sem se atravessar (mesmo método das coxas). */
+  applyBustContact(pos, amount) {
+    if (amount <= 0.001 || !this.bustSide) return;
+    const s = 0.0035;
+    for (let v = 0; v < this.N; v++) {
+      const side = this.bustSide[v];
+      if (!side) continue;
+      const w = this.bustWeight[v];
+      const margin = w * (0.0022 + (1 - amount) * 0.02);
+      const x = pos[v * 3] * side;
+      if (x < margin + s * 4) {
+        const d = x - margin;
+        const soft = d > s * 4 ? d : s * Math.log1p(Math.exp(d / s));
+        pos[v * 3] = (margin + soft) * side;
       }
     }
   }
@@ -220,5 +272,6 @@ export class Body {
     let min = Infinity;
     for (let i = 1; i < this.pos.length; i += 3) if (this.pos[i] < min) min = this.pos[i];
     this.floorY = min;
+    this.group.position.y = -min; // os pés sempre apoiam no chão, qualquer que seja o comprimento das pernas
   }
 }

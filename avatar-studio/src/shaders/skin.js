@@ -12,6 +12,189 @@ const BLUSH_N = 12;
 const MOLE_N = 10;
 const NAIL_N = 10;
 
+const ANATOMY = /* glsl */ `
+// ---------------- anatomia da superfície (marcas em avatar/anatomy.js) ----------------
+#define A_CLAV 0
+#define A_SCM 10
+#define A_NOTCH 16
+#define A_COST 17
+#define A_LINEA 25
+#define A_NAVEL 28
+#define A_ASIS 29
+#define A_SPINE 33
+#define A_DIMPLE 36
+#define A_SCAP 38
+#define A_RIBS 42
+uniform vec3 uAnat[44];
+uniform vec4 uAnatK;
+uniform vec4 uAnatK2;
+uniform float uLean, uCavGain;
+varying float vCav;
+float gAnatH = 0.0;
+float gAnatCav = 0.0;
+float gaussA(float x, float w) { return exp(-(x * x) / (w * w)); }
+float segD(vec3 p, vec3 a, vec3 b, out float t) {
+  vec3 ab = b - a;
+  t = clamp(dot(p - a, ab) / max(dot(ab, ab), 1e-9), 0.0, 1.0);
+  return length(p - (a + ab * t));
+}
+void anatomyField(vec3 p) {
+  float K = uAnatK.x;
+  if (K <= 0.001 || p.y < -0.12) return;
+  float H = 0.0;
+  float C = 0.0;
+  // pescoço, clavículas e incisura jugular
+  float kc = uAnatK.y * K;
+  if (kc > 0.0 && p.y > 0.40) {
+    for (int sd = 0; sd < 2; sd++) {
+      float sgn = sd == 0 ? 1.0 : -1.0;
+      float best = 1e9;
+      float bt = 0.0;
+      vec3 q = vec3(0.0);
+      for (int i = 0; i < 4; i++) {
+        vec3 a = uAnat[A_CLAV + sd * 5 + i];
+        vec3 b = uAnat[A_CLAV + sd * 5 + i + 1];
+        float t;
+        float d = segD(p, a, b, t);
+        if (d < best) { best = d; bt = (float(i) + t) * 0.25; q = a + (b - a) * t; }
+      }
+      float up = smoothstep(-0.005, 0.005, p.y - q.y);
+      float taper = smoothstep(0.0, 0.1, bt) * (1.0 - smoothstep(0.86, 1.0, bt));
+      float ridge = gaussA(best, 0.0085);
+      float fossa = up * gaussA(best - 0.022, 0.015);
+      float infra = (1.0 - up) * gaussA(best - 0.019, 0.016);
+      H += kc * taper * (0.0031 * ridge - 0.0042 * fossa - 0.0018 * infra);
+      C += kc * taper * (0.75 * fossa + 0.40 * infra);
+      float bm = 1e9;
+      float tm = 0.0;
+      vec3 qm = vec3(0.0);
+      for (int i = 0; i < 2; i++) {
+        vec3 a = uAnat[A_SCM + sd * 3 + i];
+        vec3 b = uAnat[A_SCM + sd * 3 + i + 1];
+        float t;
+        float d = segD(p, a, b, t);
+        if (d < bm) { bm = d; tm = (float(i) + t) * 0.5; qm = a + (b - a) * t; }
+      }
+      float lat = smoothstep(-0.004, 0.004, (p.x - qm.x) * sgn);
+      float tp = smoothstep(0.0, 0.15, tm);
+      H += kc * tp * (0.0030 * gaussA(bm, 0.0100) - 0.0022 * lat * gaussA(bm - 0.0150, 0.0085));
+      C += kc * tp * 0.55 * lat * gaussA(bm - 0.0150, 0.0085);
+    }
+    vec3 dn = p - uAnat[A_NOTCH];
+    dn.y *= 0.8;
+    float pit = gaussA(length(dn), 0.0105);
+    H -= kc * 0.0050 * pit;
+    C += kc * 0.75 * pit;
+  }
+  // arco costal e costelas laterais
+  float kr = uAnatK2.y * K * uLean;
+  if (kr > 0.0 && p.z > 0.0 && p.y > 0.10 && p.y < 0.34) {
+    for (int sd = 0; sd < 2; sd++) {
+      float best = 1e9;
+      float bt = 0.0;
+      vec3 q = vec3(0.0);
+      for (int i = 0; i < 3; i++) {
+        vec3 a = uAnat[A_COST + sd * 4 + i];
+        vec3 b = uAnat[A_COST + sd * 4 + i + 1];
+        float t;
+        float d = segD(p, a, b, t);
+        if (d < best) { best = d; bt = (float(i) + t) * 0.3333; q = a + (b - a) * t; }
+      }
+      float below = smoothstep(0.004, -0.004, p.y - q.y);
+      float tp = smoothstep(0.0, 0.12, bt);
+      H += kr * tp * (0.0018 * gaussA(best, 0.0120) - 0.0022 * below * gaussA(best - 0.016, 0.013));
+      C += kr * tp * 0.45 * below * gaussA(best - 0.016, 0.013);
+      vec3 rc = uAnat[A_RIBS + sd];
+      vec3 dr = p - rc;
+      float m = exp(-dot(dr, dr) / 0.003);
+      float lodR = 1.0 - smoothstep(0.004, 0.009, fwidth(p.y));
+      float rb = sin(p.y * 232.7);
+      H += kr * 0.0007 * rb * m * lodR;
+      C += kr * 0.12 * max(-rb, 0.0) * m * lodR;
+    }
+  }
+  // abdômen: linha alba, retos abdominais (tônus), interseções tendíneas
+  float ka = uAnatK.z * K;
+  float yX = uAnat[A_LINEA].y;
+  float yN = uAnat[A_NAVEL].y;
+  float yP = uAnat[A_LINEA + 2].y;
+  if (ka > 0.0 && p.z > 0.0 && p.y < yX + 0.03 && p.y > yP - 0.03) {
+    float ax = abs(p.x);
+    float tone = uAnatK2.w;
+    float win = smoothstep(yP - 0.005, yP + 0.05, p.y) * (1.0 - smoothstep(yX - 0.03, yX, p.y));
+    float above = 0.15 + 0.85 * smoothstep(yN - 0.01, yN + 0.04, p.y);
+    float lin = gaussA(p.x, 0.0105) * win * above;
+    H -= ka * lin * (0.0009 + 0.0011 * tone);
+    C += ka * lin * 0.20;
+    float rect = gaussA(ax - 0.027, 0.012) * smoothstep(yN - 0.045, yN + 0.02, p.y) * (1.0 - smoothstep(yX - 0.05, yX - 0.01, p.y));
+    H += ka * tone * 0.0021 * rect;
+    float mk = smoothstep(0.05, 0.032, ax);
+    for (int k = 0; k < 3; k++) {
+      float yk = yN + 0.032 + 0.037 * float(k);
+      float g = gaussA(p.y - yk, 0.0046) * mk;
+      H -= ka * tone * 0.0011 * g;
+      C += ka * tone * 0.25 * g;
+    }
+  }
+  // umbigo
+  float kn = uAnatK2.z * K;
+  if (kn > 0.0) {
+    vec3 dv = p - uAnat[A_NAVEL];
+    if (abs(dv.z) < 0.03 && abs(dv.y) < 0.03) {
+      float e = length(vec2(dv.x / 0.0062, dv.y / 0.0092));
+      float pitN = exp(-e * e * 0.9);
+      float rimN = exp(-pow(e - 1.5, 2.0) / 0.35);
+      H += kn * (-0.0050 * pitN + 0.0013 * rimN);
+      C += kn * 0.65 * pitN;
+    }
+  }
+  // quadril: espinha ilíaca e prega inguinal (linha em V)
+  float kh = uAnatK.w * K;
+  if (kh > 0.0 && p.z > 0.0 && p.y < 0.12 && p.y > -0.12) {
+    for (int sd = 0; sd < 2; sd++) {
+      vec3 a = uAnat[A_ASIS + sd * 2];
+      vec3 b = uAnat[A_ASIS + sd * 2 + 1];
+      float t;
+      float d = segD(p, a, b, t);
+      float g = gaussA(d, 0.0110) * smoothstep(0.12, 0.4, t) * (1.0 - smoothstep(0.88, 1.0, t));
+      H -= kh * 0.0024 * g;
+      C += kh * 0.50 * g;
+      H += kh * 0.0030 * gaussA(length(p - a), 0.015);
+    }
+  }
+  // costas: coluna, vértebra C7, covinhas lombares, escápulas
+  float kb = uAnatK2.x * K;
+  if (kb > 0.0 && p.z < 0.0) {
+    for (int i = 0; i < 2; i++) {
+      vec3 a = uAnat[A_SPINE + i];
+      vec3 b = uAnat[A_SPINE + i + 1];
+      float t;
+      float d = segD(p, a, b, t);
+      float tt = (float(i) + t) * 0.5;
+      float w = smoothstep(0.0, 0.08, tt) * (1.0 - smoothstep(0.82, 1.0, tt));
+      H -= kb * 0.0014 * gaussA(d, 0.0120) * w;
+      H += kb * 0.0016 * gaussA(abs(p.x) - 0.032, 0.016) * w * smoothstep(0.35, 0.65, tt) * (1.0 - smoothstep(0.85, 1.0, tt));
+      C += kb * 0.22 * gaussA(d, 0.0120) * w;
+    }
+    H += kb * 0.0030 * gaussA(length(p - uAnat[A_SPINE]), 0.011);
+    for (int sd = 0; sd < 2; sd++) {
+      float dd = length(p - uAnat[A_DIMPLE + sd]);
+      H -= kb * 0.0032 * gaussA(dd, 0.0130);
+      C += kb * 0.6 * gaussA(dd, 0.0130);
+      vec3 a = uAnat[A_SCAP + sd * 2];
+      vec3 b = uAnat[A_SCAP + sd * 2 + 1];
+      float t;
+      float d = segD(p, a, b, t);
+      float tp = smoothstep(0.0, 0.2, t) * (1.0 - smoothstep(0.8, 1.0, t));
+      H += kb * 0.0022 * gaussA(d, 0.013) * tp;
+      C += kb * 0.20 * gaussA(d - 0.018, 0.013) * tp;
+    }
+  }
+  gAnatH = H;
+  gAnatCav = clamp(C, 0.0, 1.0);
+}
+`;
+
 const DECL = /* glsl */ `
 uniform highp sampler3D uNoise;
 uniform sampler2D uSkinLUT;
@@ -23,6 +206,7 @@ uniform vec4 uMole[${MOLE_N}];
 uniform vec4 uNail[${NAIL_N}];
 varying vec3 vRest;
 float gCurvY = 0.5;
+float gCavT = 0.0;
 float gNail = 0.0;
 
 float hash13(vec3 p3) {
@@ -67,6 +251,7 @@ vec3 skinLUT(float ndl) {
   vec3 lut = texture2D(uSkinLUT, vec2(ndl * 0.5 + 0.5, gCurvY)).rgb;
   return mix(vec3(max(ndl, 0.0)), lut, uSSS);
 }
+${ANATOMY}
 `;
 
 const LIGHT_OVERRIDE = /* glsl */ `
@@ -140,11 +325,19 @@ for (int i = 0; i < ${NAIL_N}; i++) {
 }
 skinCol = mix(skinCol, uNailColor, gNail * uNails);
 gNail *= uNails;
+// anatomia e cavidade da malha: sombra suave e mais quente em vãos, cristas levemente mais claras
+anatomyField(rp);
+float cavG = clamp(vCav * uCavGain, -0.5, 1.0);
+float cavT = clamp(gAnatCav + max(cavG, 0.0) * 0.7, 0.0, 1.0) * clamp(uAnatK.x * 1.2, 0.0, 1.0);
+skinCol *= 1.0 - cavT * 0.38;
+skinCol = mix(skinCol, skinCol * vec3(1.07, 0.84, 0.80), cavT * 0.5);
+skinCol *= 1.0 + min(cavG, 0.0) * -0.08 * uAnatK.x;
+gCavT = cavT;
 diffuseColor.rgb = skinCol;
 `;
 
 const ROUGH = /* glsl */ `
-roughnessFactor = clamp(0.54 - uOil * 0.27 + (nA.r - 0.5) * 0.10 + (nB.g - 0.5) * 0.07 - gNail * 0.38, 0.1, 1.0);
+roughnessFactor = clamp(0.60 - uOil * 0.30 + (nA.r - 0.5) * 0.10 + (nB.g - 0.5) * 0.07 + gCavT * 0.18 - gNail * 0.42, 0.1, 1.0);
 `;
 
 const NORMAL = /* glsl */ `
@@ -160,7 +353,7 @@ const NORMAL = /* glsl */ `
   float fadeMid = 1.0 - smoothstep(0.02, 0.07, fwMid);
   float hPore = -(1.0 - smoothstep(0.28, 0.5, nA.r)) * 0.00016 * fadeFine + (nA2.r - 0.5) * 0.00006 * fadeFine;
   float hMid = (nB.r - 0.5) * 0.00032 * fadeMid;
-  normal = skinBump(-vViewPosition, normal, (hPore + hMid) * uPores);
+  normal = skinBump(-vViewPosition, normal, (hPore + hMid) * uPores + gAnatH);
 }
 `;
 
@@ -204,6 +397,11 @@ export class SkinMaterial extends THREE.MeshPhysicalMaterial {
       uSSS: { value: 0.85 },
       uShimmer: { value: 0 },
       uNails: { value: 0 },
+      uAnat: { value: Array.from({ length: 44 }, () => new THREE.Vector3()) },
+      uAnatK: { value: new THREE.Vector4(0.8, 1, 0.7, 0.8) },
+      uAnatK2: { value: new THREE.Vector4(0.8, 0.6, 1, 0.3) },
+      uLean: { value: 1 },
+      uCavGain: { value: 1 / 0.0018 },
       uNailColor: { value: new THREE.Color() },
       uShimmerColor: { value: new THREE.Color() },
       uBlush: { value: Array.from({ length: BLUSH_N }, () => new THREE.Vector4(0, 0, 0, 0)) },
@@ -214,14 +412,14 @@ export class SkinMaterial extends THREE.MeshPhysicalMaterial {
   }
 
   customProgramCacheKey() {
-    return 'skin-v1';
+    return 'skin-v2';
   }
 
   onBeforeCompile(shader) {
     Object.assign(shader.uniforms, this.u);
     shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', '#include <common>\nattribute vec3 aRest;\nvarying vec3 vRest;')
-      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvRest = aRest;');
+      .replace('#include <common>', '#include <common>\nattribute vec3 aRest;\nattribute float aCav;\nvarying vec3 vRest;\nvarying float vCav;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvRest = aRest;\nvCav = aCav;');
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>', '#include <common>\n' + DECL)
       .replace('#include <lights_physical_pars_fragment>', '#include <lights_physical_pars_fragment>\n' + LIGHT_OVERRIDE)
@@ -247,12 +445,28 @@ export class SkinMaterial extends THREE.MeshPhysicalMaterial {
     u.uSSS.value = e.sss;
     u.uShimmer.value = e.shimmer;
     u.uNails.value = e.nails;
+    u.uAnatK.value.set(e.anatomy, e.anaCollar, e.anaAbs, e.anaHips);
+    u.uAnatK2.value.x = e.anaBack;
+    u.uAnatK2.value.y = e.anaRibs;
+    u.uAnatK2.value.z = e.anaNavel;
     u.uNailColor.value.set(e.nailColor || '#d6336c');
     u.uShimmerColor.value.set(e.shimmerColor || '#fff1c9');
     this.sheenColor.set(0.95, 0.74, 0.64).multiplyScalar(0.55 * e.fuzz);
     this.clearcoat = 0.12 + 0.55 * e.oil;
     this.clearcoatRoughness = 0.42 - 0.22 * e.oil;
     this.skin = skin;
+  }
+
+  /** Marcas anatômicas (avatar/anatomy.js) em metros, no espaço de referência. */
+  setAnatomy(points) {
+    const arr = this.u.uAnat.value;
+    for (let i = 0; i < arr.length; i++) arr[i].set(points[i * 3], points[i * 3 + 1], points[i * 3 + 2]);
+  }
+
+  /** Estado do corpo que modula a anatomia: tônus abdominal (0..1) e magreza (costelas aparecem mais). */
+  setBodyState({ tone, lean }) {
+    this.u.uAnatK2.value.w = Math.min(1, Math.max(0, tone));
+    this.u.uLean.value = Math.min(1.4, Math.max(0.15, lean));
   }
 
   /** Pontos de vermelhidão e esmalte, no espaço de referência (estado neutro). */

@@ -90,6 +90,8 @@ detail('bust.upperFullness', 'bust', L('Volume superior', 'Upper fullness'), bet
 detail('bust.extraVolume', 'bust', L('Volume extra do busto', 'Extra bust volume'), { neg: ['custom/bust-volume-decr'], pos: ['custom/bust-volume-incr'] }, { natural: [-0.6, 1], extended: [-1, 1.8] });
 detail('bust.circumference', 'bust', L('Contorno do busto', 'Bust circumference'), dec('measure', 'measure-bust-circ'));
 detail('bust.underbust', 'bust', L('Contorno sob o busto', 'Underbust circumference'), dec('measure', 'measure-underbust-circ'));
+// Contato entre os seios: 1 = encostam-se e formam o sulco sem se atravessar; 0 = livres
+detail('bust.contact', 'bust', L('Seios encostados (sulco)', 'Touching breasts (cleavage)'), { neg: [], pos: [] }, { natural: [0, 1], extended: [0, 1], neutral: 1, runtime: 'bustContact' });
 detail('bust.asymmetry', 'bust', L('Assimetria', 'Asymmetry'), { neg: ['asym/asymm-breast-1-l'], pos: ['asym/asymm-breast-1-r'] }, { natural: [-0.6, 0.6], extended: [-1, 1] });
 
 // ------------------------------------------------------------------ Neck & shoulders

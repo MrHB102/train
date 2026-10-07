@@ -27,6 +27,14 @@ export const SKIN_PARAMS = [
   { id: 'oil', label: L('Brilho / oleosidade', 'Gloss / oiliness'), min: 0, max: 1, def: 0.25, step: 0.01 },
   { id: 'sss', label: L('Translucidez da pele', 'Skin translucency'), min: 0, max: 1, def: 0.85, step: 0.01 },
   { id: 'shimmer', label: L('Glitter corporal', 'Body glitter'), min: 0, max: 1, def: 0, step: 0.01 },
+  // Anatomia da superfície: relevo e sombra de ossos, tendões e músculos (não muda a geometria)
+  { id: 'anatomy', group: 'anatomy', label: L('Definição anatômica (geral)', 'Anatomical definition (overall)'), min: 0, max: 1.6, def: 0.85, step: 0.01 },
+  { id: 'anaCollar', group: 'anatomy', label: L('Clavículas e tendões do pescoço', 'Collarbones and neck tendons'), min: 0, max: 1.6, def: 1, step: 0.01 },
+  { id: 'anaAbs', group: 'anatomy', label: L('Abdômen (linha alba, marcado)', 'Abdomen (linea alba, defined)'), min: 0, max: 1.6, def: 0.8, step: 0.01 },
+  { id: 'anaNavel', group: 'anatomy', label: L('Umbigo', 'Navel'), min: 0, max: 1.6, def: 1, step: 0.01 },
+  { id: 'anaHips', group: 'anatomy', label: L('Ossos do quadril e linha em V', 'Hip bones and V-line'), min: 0, max: 1.6, def: 0.8, step: 0.01 },
+  { id: 'anaRibs', group: 'anatomy', label: L('Costelas', 'Ribs'), min: 0, max: 1.6, def: 0.6, step: 0.01 },
+  { id: 'anaBack', group: 'anatomy', label: L('Costas (coluna, escápulas, covinhas)', 'Back (spine, shoulder blades, dimples)'), min: 0, max: 1.6, def: 0.8, step: 0.01 },
   { id: 'nails', label: L('Esmalte nos pés', 'Toenail polish'), min: 0, max: 1, def: 0, step: 0.01 },
 ];
 

@@ -13,7 +13,9 @@ const TAU = Math.PI * 2;
 
 /** Poses: ajustes estáticos. Ângulos em graus, distâncias em metros. */
 export const POSES = {
-  stand: { pt: 'Em pé (pés juntos)', en: 'Standing (feet together)', stance: -0.07 },
+  // stance = deslocamento lateral dos tornozelos em relação à pose de repouso (A-pose, tornozelos a ±0.163 m)
+  stand: { pt: 'Em pé (pés e coxas juntos)', en: 'Standing (feet and thighs together)', stance: -0.116 },
+  relaxed: { pt: 'Em pé (relaxada)', en: 'Standing (relaxed)', stance: -0.063 },
   apart: { pt: 'Em pé (afastada)', en: 'Standing (apart)', stance: 0.0 },
   contrapposto: { pt: 'Contrapeso', en: 'Contrapposto', hipRoll: 5, hipShift: -0.022, spineRoll: -4, spineTwist: 4, feet: [[0, 0.0], [0, 0.07]], stance: -0.02 },
   hip: { pt: 'Quadril de lado', en: 'Hip pop', hipRoll: 9, hipShift: -0.04, spineRoll: -8, spineTwist: 8, feet: [[0, 0.0], [0, 0.1]], stance: 0.0 },
@@ -160,9 +162,8 @@ export class Animator {
           f.pitch = lerp(24, -9, smooth(u)) * DEG;
         }
         f.x += (s === 0 ? -1 : 1) * g.cross * -1 + (s === 0 ? 1 : -1) * 0 + g.st * (s === 0 ? 1 : -1) * 0;
-        o.stance += 0;
       }
-      o.stance += g.st;
+      o.stance = (m === 'strut' ? -0.1 : -0.06) + g.st; // a marcha usa a própria largura de passo
       const a = Math.sin(ph * TAU);
       o.rootPos.x += -a * g.sway;
       o.roll += a * g.roll * DEG;

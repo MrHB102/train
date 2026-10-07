@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Várias capturas numa sessão do navegador. Uso: node tools/shots.mjs <url> <config.json> [--w 900 --h 1000]
-// config.json: [{ "out": "a.png", "eval": "js opcional", "wait": 800 }, ...]
+// config.json: [{ "out": "a.png", "eval": "js opcional" | "evalFile": "arquivo.js", "wait": 800 }, ...]
 import { createRequire } from 'node:module';
 import fs from 'node:fs';
 const require = createRequire(import.meta.url);
@@ -22,6 +22,7 @@ await page.waitForFunction(() => document.body.dataset.ready === '1' || document
 const err = await page.evaluate(() => document.body.dataset.error || '');
 if (err) logs.push('APP ERROR: ' + err);
 for (const s of steps) {
+  if (s.evalFile) s.eval = fs.readFileSync(s.evalFile, 'utf8');
   if (s.eval) {
     try { const r = await page.evaluate(s.eval); if (r !== undefined) logs.push(`${s.out}: ${JSON.stringify(r)}`); } catch (e) { logs.push('eval error: ' + e.message); }
   }
