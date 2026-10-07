@@ -294,10 +294,13 @@ for (int i = 0; i < ${BLUSH_N}; i++) {
   redAcc += exp(-dot(d, d) / (b.w * b.w));
 }
 skinCol = mix(skinCol, skinCol * vec3(1.09, 0.80, 0.78), clamp(redAcc * 0.55 * uRedness, 0.0, 0.9));
-// veias (linhas azul-esverdeadas sutis, mais nas pernas/pés)
+// veias: linhas finas e contínuas (curvas de nível do ruído 3D), azuladas e sutis, em manchas e mais nas pernas e pés.
+// (antes eram os picos do ruído, que viravam tracinhos soltos atrás da coxa)
 float veinMask = (1.0 - smoothstep(-0.35, 0.1, rp.y)) * 0.8 + 0.2;
-float vein = smoothstep(0.80, 0.95, texture(uNoise, rp * 11.0 + 0.5).b);
-skinCol = mix(skinCol, skinCol * vec3(0.80, 0.88, 0.96), vein * veinMask * uVeins * 0.55);
+float vn = texture(uNoise, rp * 6.5 + 0.5).b;
+float vein = (1.0 - smoothstep(0.0, 0.022, abs(vn - 0.5))) * (1.0 - smoothstep(0.015, 0.05, fwidth(vn)));
+vein *= smoothstep(0.3, 0.55, texture(uNoise, rp * 2.3 + 0.2).g);
+skinCol = mix(skinCol, skinCol * vec3(0.76, 0.85, 0.96), vein * veinMask * uVeins * 0.9);
 // sardas (mais nos ombros e na parte de cima)
 if (uFreckles > 0.001) {
   float sun = smoothstep(-0.05, 0.38, rp.y) * 0.85 + 0.15;
@@ -412,7 +415,7 @@ export class SkinMaterial extends THREE.MeshPhysicalMaterial {
   }
 
   customProgramCacheKey() {
-    return 'skin-v2';
+    return 'skin-v3';
   }
 
   onBeforeCompile(shader) {
