@@ -97,6 +97,7 @@ export function createSkirtCloth(body, ctx, params) {
     subU: params.pleats > 0 ? 4 : 3,
     subV: 3,
     hemLength: rest.length,
+    seamOffset: Math.floor(rest.cols / 2), // a emenda do padrão fica nas costas
     uv: (fr, fc) => [(fc / rest.cols) * rest.circ, (fr / (rest.rows - 1)) * rest.length],
   });
   cloth.meta = rest;
@@ -105,8 +106,9 @@ export function createSkirtCloth(body, ctx, params) {
 }
 
 /** Reajusta a saia ao corpo atual (após morph): recalcula o formato de repouso e recomeça a simulação. */
-export function refitSkirt(cloth, body, ctx) {
+export function refitSkirt(cloth, body, ctx, { soft = true } = {}) {
   const rest = buildSkirtRest(body, ctx, cloth.params);
   cloth.meta = rest;
-  cloth.setRest(rest.rest);
+  if (soft) cloth.retarget(rest.rest);
+  else cloth.setRest(rest.rest);
 }

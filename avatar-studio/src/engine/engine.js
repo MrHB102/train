@@ -83,6 +83,8 @@ export function createEngine(container) {
   let running = false;
   const state = { time: 0, autoRotate: false, rotateSpeed: 0.5 };
 
+  // o painel lateral cobre parte da tela: desloca a imagem para o corpo ficar no centro da área livre
+  const shift = { x: 0, y: 0 };
   function resize() {
     const w = container.clientWidth || window.innerWidth;
     const h = container.clientHeight || window.innerHeight;
@@ -90,6 +92,8 @@ export function createEngine(container) {
     renderer.domElement.style.width = '100%';
     renderer.domElement.style.height = '100%';
     camera.aspect = w / h;
+    if (shift.x || shift.y) camera.setViewOffset(w, h, shift.x, shift.y, w, h);
+    else camera.clearViewOffset();
     camera.updateProjectionMatrix();
   }
   new ResizeObserver(resize).observe(container);
@@ -131,5 +135,11 @@ export function createEngine(container) {
       renderer.render(scene, camera);
     },
     resize,
+    /** Desloca a imagem (px): x > 0 move o corpo para a esquerda, y > 0 para cima. */
+    setViewShift(x, y = 0) {
+      shift.x = x;
+      shift.y = y;
+      resize();
+    },
   };
 }

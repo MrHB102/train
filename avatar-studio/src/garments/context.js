@@ -37,6 +37,25 @@ export function createContext(body) {
     }
     mask[key] = m;
   }
+  // suaviza as máscaras de braço/ombro na vizinhança da malha: bordas de roupa (cava, decote) menos serrilhadas
+  {
+    const { start, nb } = body.cavity;
+    const smoothMask = (m, iters = 4) => {
+      let a = m;
+      let b = new Float32Array(N);
+      for (let it = 0; it < iters; it++) {
+        for (let v = 0; v < N; v++) {
+          let sum = a[v] * 2;
+          const s0 = start[v], s1 = start[v + 1];
+          for (let k = s0; k < s1; k++) sum += a[nb[k]];
+          b[v] = sum / (s1 - s0 + 2);
+        }
+        [a, b] = [b, a];
+      }
+      return a;
+    };
+    for (const key of ['armL', 'armR', 'shoulderL', 'shoulderR']) mask[key] = smoothMask(mask[key]);
+  }
   mask.arm = mask.armL.map((x, i) => x + mask.armR[i]);
   mask.leg = mask.legL.map((x, i) => x + mask.legR[i]);
 
@@ -70,6 +89,22 @@ export function createContext(body) {
     neck: { base: head('neck01').clone(), top: head('neck03').clone() },
   };
   const axis = (a, b) => b.clone().sub(a).normalize();
+  // eixo do braço (ombro → cotovelo) e distância axial do corte (onde o braço termina), por lado
+  const tailOf = (n) => ref.tails[rig.index.get(n)];
+  L.arm = {};
+  for (const sd of ['L', 'R']) {
+    const a = head(`upperarm01.${sd}`).clone();
+    const ax = tailOf(`upperarm02.${sd}`).clone().sub(a).normalize();
+    let uCut = 0;
+    let uIn = 1e9;
+    for (let v = 0; v < N; v++) {
+      if (mask[`arm${sd}`][v] < 0.5) continue;
+      const u = (ref.pos[v * 3] - a.x) * ax.x + (ref.pos[v * 3 + 1] - a.y) * ax.y + (ref.pos[v * 3 + 2] - a.z) * ax.z;
+      if (u > uCut) uCut = u;
+      if (u < uIn) uIn = u;
+    }
+    L.arm[sd] = { head: a, axis: ax, uCut, uIn };
+  }
   L.thighAxis = { L: axis(L.hip.L, L.knee.L), R: axis(L.hip.R, L.knee.R) };
   L.shinAxis = { L: axis(L.knee.L, L.ankle.L), R: axis(L.knee.R, L.ankle.R) };
   L.neckAxis = axis(L.neck.base, L.neck.top);

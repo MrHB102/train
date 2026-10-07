@@ -11,6 +11,7 @@ export const SLOTS = [
   { id: 'onepiece', pt: 'Peça única', en: 'One-piece' },
   { id: 'top', pt: 'Parte de cima', en: 'Top' },
   { id: 'bottom', pt: 'Parte de baixo', en: 'Bottom' },
+  { id: 'skirt', pt: 'Saia', en: 'Skirt' },
   { id: 'sleeves', pt: 'Mangas', en: 'Sleeves' },
   { id: 'apron', pt: 'Avental', en: 'Apron' },
   { id: 'legwear', pt: 'Meias / meia-calça', en: 'Legwear' },
@@ -37,6 +38,7 @@ export const GARMENT_TYPES = {
     slot: 'onepiece', layer: 3, label: L('Collant / maiô', 'Leotard'),
     style: style({ fabric: 'satin', color: '#14141b', trim: 'piping', trimColor: '#f4f4f4', trimWidth: 0.012, seams: 1 }),
     options: [
+      choice('neckline', 'Decote', 'Neckline', [{ id: 0, pt: 'Reto', en: 'Straight' }, { id: 1, pt: 'Coração', en: 'Sweetheart' }, { id: 3, pt: 'Em V', en: 'V-neck' }], 1),
       range('legCut', 'Cavado da perna', 'Leg cut height', 0, 1, 0.72),
       range('topHeight', 'Altura do decote', 'Neckline height', -0.5, 1, 0.1),
       range('backDrop', 'Cobertura atrás', 'Back coverage', 0, 1, 0.6),
@@ -76,7 +78,7 @@ export const GARMENT_TYPES = {
     options: [range('length', 'Comprimento (joelho → tornozelo)', 'Length (knee → ankle)', 0, 1, 1), range('rise', 'Altura da cintura', 'Waist rise', -0.05, 0.1, 0.0)],
   },
   skirt: {
-    slot: 'bottom', layer: 0, drape: true, label: L('Saia (simulada)', 'Skirt (simulated)'),
+    slot: 'skirt', layer: 0, drape: true, label: L('Saia (simulada)', 'Skirt (simulated)'),
     style: style({ fabric: 'satin', color: '#15151c', trim: 'piping', trimColor: '#f4f4f4', trimWidth: 0.03 }),
     options: [
       range('length', 'Comprimento', 'Length', 0.14, 0.75, 0.34),
@@ -115,10 +117,9 @@ export const GARMENT_TYPES = {
     options: [range('size', 'Tamanho', 'Size', 0.6, 1.8, 1.0), range('lift', 'Posição', 'Position', 0, 0.04, 0.012)],
   },
   tail: {
-    slot: 'tail', layer: 5, label: L('Rabo', 'Tail'),
+    slot: 'tail', layer: 5, label: L('Rabo de coelha (pompom)', 'Bunny tail (pom-pom)'),
     style: style({ fabric: 'velvet', color: '#fbfbfb' }),
     options: [
-      choice('kind', 'Tipo', 'Kind', [{ id: 0, pt: 'Coelha (pompom)', en: 'Bunny (pom-pom)' }, { id: 1, pt: 'Gata', en: 'Cat' }], 0),
       range('size', 'Tamanho', 'Size', 0.5, 1.8, 1.0),
       range('height', 'Altura nas costas', 'Height on back', -0.04, 0.08, 0.0),
     ],
@@ -136,7 +137,7 @@ export const OUTFITS = [
       { type: 'collar', style: { fabric: 'cotton', color: '#fafafa', trim: 'piping', trimColor: '#14141a' } },
       { type: 'bowtie', style: { fabric: 'satin', color: '#14141b' } },
       { type: 'legwear', style: { fabric: 'fishnet', color: '#101014', cell: 0.0072, thread: 0.18, trim: 'none' }, options: { top: 1 } },
-      { type: 'tail', options: { kind: 0 } },
+      { type: 'tail' },
     ],
   },
   {

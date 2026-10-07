@@ -8,10 +8,10 @@ import * as THREE from 'three';
 export const FABRICS = {
   cotton: { pt: 'Algodão', en: 'Cotton', rough: 0.88, sheen: 0.45, sheenRough: 0.8, bump: 'WEAVE' },
   knit: { pt: 'Malha canelada', en: 'Ribbed knit', rough: 0.9, sheen: 0.5, sheenRough: 0.85, bump: 'RIB' },
-  satin: { pt: 'Cetim', en: 'Satin', rough: 0.3, sheen: 1.0, sheenRough: 0.32, clearcoat: 0.18, ccRough: 0.25, bump: 'WEAVE_FINE' },
+  satin: { pt: 'Cetim', en: 'Satin', rough: 0.44, sheen: 1.0, sheenRough: 0.4, clearcoat: 0.05, ccRough: 0.35, bump: 'WEAVE_FINE' },
   latex: { pt: 'Látex / vinil', en: 'Latex / vinyl', rough: 0.14, clearcoat: 1.0, ccRough: 0.04, bump: 'NONE' },
   denim: { pt: 'Jeans', en: 'Denim', rough: 0.92, sheen: 0.15, sheenRough: 0.9, bump: 'TWILL' },
-  velvet: { pt: 'Veludo', en: 'Velvet', rough: 0.96, sheen: 1.0, sheenRough: 0.5, bump: 'WEAVE', sheenBoost: 1.5 },
+  velvet: { pt: 'Veludo', en: 'Velvet', rough: 0.96, sheen: 1.0, sheenRough: 0.5, bump: 'WEAVE', sheenBoost: 1.0, sheenMix: 0.12 },
   leather: { pt: 'Couro', en: 'Leather', rough: 0.4, clearcoat: 0.35, ccRough: 0.3, bump: 'GRAIN' },
   sheer: { pt: 'Meia fina (transparente)', en: 'Sheer hosiery', rough: 0.6, sheen: 0.7, sheenRough: 0.6, bump: 'WEAVE_FINE', transparent: true },
   fishnet: { pt: 'Meia arrastão', en: 'Fishnet', rough: 0.5, sheen: 0.4, sheenRough: 0.6, bump: 'NONE', cutout: true },
@@ -237,7 +237,7 @@ export class FabricMaterial extends THREE.MeshPhysicalMaterial {
     this.sheen = f.sheen ?? 0;
     this.sheenRoughness = f.sheenRough ?? 0.8;
     const base = new THREE.Color(p.color);
-    this.sheenColor.copy(base).lerp(new THREE.Color(1, 1, 1), 0.55).multiplyScalar(f.sheenBoost ?? 1);
+    this.sheenColor.copy(base).lerp(new THREE.Color(1, 1, 1), f.sheenMix ?? 0.35).multiplyScalar(f.sheenBoost ?? 1);
     this.clearcoat = f.clearcoat ?? 0;
     this.clearcoatRoughness = f.ccRough ?? 0.2;
     // transparência suave (sem recorte duro): evita moiré; renda/arrastão/meia fina vêm depois do corpo

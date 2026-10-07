@@ -88,3 +88,37 @@ export function legUv(ctx, radius = 0.065) {
     return [Math.atan2(x - cx, pos[v * 3 + 2] - 0.02) * radius, pos[v * 3 + 1]];
   };
 }
+
+/**
+ * Coordenada ao longo da perna (m) por vértice: distância axial a partir do tornozelo, seguindo
+ * tornozelo → joelho → quadril (com mistura suave no joelho) e continuando acima do quadril. Negativa nos pés.
+ * Meias, legging e shorts usam isso para cortar em planos perpendiculares à perna.
+ */
+export function legAxial(ctx) {
+  if (ctx._legU) return ctx._legU;
+  const { L, pos, N } = ctx;
+  const out = new Float32Array(N);
+  const seg = {};
+  for (const side of ['L', 'R']) {
+    const A = L.ankle[side], K = L.knee[side], H = L.hip[side];
+    const us = K.clone().sub(A);
+    const lshin = us.length();
+    us.normalize();
+    const ut = H.clone().sub(K).normalize();
+    const nb = us.clone().add(ut).normalize();
+    seg[side] = { A, K, us, ut, nb, lshin, lthigh: H.distanceTo(K) };
+  }
+  for (let v = 0; v < N; v++) {
+    const x = pos[v * 3], y = pos[v * 3 + 1], z = pos[v * 3 + 2];
+    const g = seg[x >= 0 ? 'L' : 'R'];
+    const px = x - g.A.x, py = y - g.A.y, pz = z - g.A.z;
+    const ushin = px * g.us.x + py * g.us.y + pz * g.us.z;
+    const kx = x - g.K.x, ky = y - g.K.y, kz = z - g.K.z;
+    const uthigh = g.lshin + kx * g.ut.x + ky * g.ut.y + kz * g.ut.z;
+    const w = smoothstep(-0.04, 0.04, kx * g.nb.x + ky * g.nb.y + kz * g.nb.z);
+    out[v] = ushin + (uthigh - ushin) * w;
+  }
+  ctx._legU = out;
+  ctx._legLen = { shin: seg.L.lshin, thigh: seg.L.lthigh };
+  return out;
+}

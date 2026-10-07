@@ -14,6 +14,7 @@ export class Body {
     this.rig = new Rig(pkg);
     this.values = neutralValues();
     this.dials = neutralDials();
+    this.slack = 0; // folga do Extended Range para o repique elástico
     this.N = pkg.meta.vertCount;
     this.pos = new Float32Array(this.N * 3); // posições do corpo na pose de repouso (m)
     this.normals = new Float32Array(this.N * 3);
@@ -92,9 +93,20 @@ export class Body {
     return this.dials;
   }
 
+  /** Troca Traits e Dials de uma vez (um único rebuild). */
+  setState(traits, dials) {
+    if (traits) {
+      let v = { ...this.values, ...traits };
+      if (Object.keys(traits).some((k) => k.startsWith('ancestry.'))) v = normalizeAncestry(v);
+      this.values = v;
+    }
+    if (dials) this.dials = { ...this.dials, ...dials };
+    this.rebuild();
+  }
+
   /** Valores efetivos (Traits + Dials) que alimentam o motor de morph. */
   effective() {
-    return effectiveValues(this.values, this.dials);
+    return effectiveValues(this.values, this.dials, this.slack);
   }
 
   rebuild() {

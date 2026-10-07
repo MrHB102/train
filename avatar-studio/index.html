@@ -3,15 +3,20 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#06080e" />
     <title>Avatar Studio</title>
     <style>
-      html, body { margin: 0; height: 100%; background: #0b0b10; overflow: hidden; }
+      html, body { margin: 0; height: 100%; background: #06080e; overflow: hidden; }
       #app { position: fixed; inset: 0; }
-      canvas { display: block; width: 100%; height: 100%; touch-action: none; }
     </style>
   </head>
   <body>
     <div id="app"></div>
+    <div id="loading" class="loading" style="position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:radial-gradient(circle at 50% 40%,#121b33,#05070c);color:#8f9cc0;font:13px system-ui,sans-serif;z-index:60">
+      <div style="letter-spacing:.2em;font-weight:600;color:#e8eeff">AVATAR STUDIO</div>
+      <div class="bar"><i></i></div>
+      <div>carregando o corpo…</div>
+    </div>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>

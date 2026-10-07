@@ -77,8 +77,9 @@ export const DIALS = [
     label: L('Coxas (finas ↔ grossas)', 'Thighs (slim ↔ thick)'),
     hint: L('Aumenta ou reduz o volume das coxas', 'Grows or reduces thigh volume'),
     neutral: 0,
-    natural: [-1, 1],
-    extended: [-1.2, 2],
+    natural: [-1, 1.4],
+    extended: [-1.2, 2.6],
+    size: true,
     weights: {
       'thighs.fullness': 0.7,
       'thighs.circumference': 0.5,
@@ -104,6 +105,49 @@ export const DIALS = [
       'hips.width': 0.15,
     },
   },
+  // ---- Dials de tamanho (um controle só do pequeno ao gigante, como nos criadores de personagem) ----
+  {
+    id: 'bustSize',
+    label: L('Tamanho do busto', 'Bust size'),
+    hint: L('Do menor ao gigante: tamanho + volume extra. Os seios se encostam ao crescer', 'Smallest to giant: size + extra volume. The breasts touch as they grow'),
+    neutral: 0,
+    natural: [-1, 1.4],
+    extended: [-1, 3],
+    size: true,
+    // u < 0 encolhe; 0..1 vai ao grande; 1..3 vai do grande ao gigante (limite do Extended Range)
+    curve: (u) => ({
+      'bust.size': u < 1 ? 0.5 * u : 0.5 + 0.15 * (u - 1),
+      'bust.extraVolume': u < 0 ? 0.8 * u : u < 1 ? 0.5 * u : 0.5 + 0.65 * (u - 1),
+    }),
+  },
+  {
+    id: 'glutesSize',
+    label: L('Tamanho dos glúteos', 'Glute size'),
+    hint: L('Do menor ao gigante: volume + arredondamento', 'Smallest to giant: volume + roundness'),
+    neutral: 0,
+    natural: [-1, 1.4],
+    extended: [-1, 3],
+    size: true,
+    curve: (u) => ({
+      'glutes.volume': u <= 1 ? 1.0 * u : 1.0 + 0.35 * (u - 1),
+      'glutes.extraVolume': u < 0 ? 0.6 * u : u <= 1 ? 0.5 * u : 0.5 + 0.65 * (u - 1),
+      'hips.width': 0.12 * u,
+    }),
+  },
+  {
+    id: 'hipSize',
+    label: L('Largura do quadril', 'Hip width'),
+    hint: L('Quadril mais estreito ou mais largo, com transição suave da cintura', 'Narrower or wider hips with a smooth waist transition'),
+    neutral: 0,
+    natural: [-1, 1.4],
+    extended: [-1, 2.6],
+    size: true,
+    curve: (u) => ({
+      'hips.width': 0.55 * u,
+      'hips.circumference': 0.6 * u,
+      'hips.depth': 0.18 * u,
+    }),
+  },
 ];
 export const DIAL_BY_ID = Object.fromEntries(DIALS.map((d) => [d.id, d]));
 
@@ -113,17 +157,27 @@ export function neutralDials() {
   return v;
 }
 
-/** Valores efetivos dos Traits = Traits + Dials, limitados ao Extended Range. */
-export function effectiveValues(values, dials) {
+/**
+ * Valores efetivos dos Traits = Traits + Dials, limitados ao Extended Range.
+ * `slack` (0..1) alarga o limite em uma fração do intervalo: deixa a animação de repique ultrapassar o
+ * extremo por um instante (sem isso o overshoot seria cortado justamente no valor máximo).
+ */
+export function effectiveValues(values, dials, slack = 0) {
   const out = { ...values };
   for (const d of DIALS) {
     const p = dials?.[d.id] || 0;
     if (!p) continue;
-    for (const [id, w] of Object.entries(d.weights)) out[id] = (out[id] ?? TRAIT_BY_ID[id].neutral) + p * w;
+    // Dial linear (peso × posição) ou com curva (composição não linear: 0..100% cobre do pequeno ao gigante)
+    const deltas = d.curve ? d.curve(p) : null;
+    for (const [id, w] of Object.entries(d.weights || {})) out[id] = (out[id] ?? TRAIT_BY_ID[id].neutral) + (deltas ? 0 : p * w);
+    if (deltas) for (const [id, dv] of Object.entries(deltas)) out[id] = (out[id] ?? TRAIT_BY_ID[id].neutral) + dv;
   }
   for (const id of Object.keys(out)) {
     const t = TRAIT_BY_ID[id];
-    if (t) out[id] = Math.min(t.extended[1], Math.max(t.extended[0], out[id]));
+    if (t) {
+      const span = t.extended[1] - t.extended[0];
+      out[id] = Math.min(t.extended[1] + span * slack, Math.max(t.extended[0] - span * slack, out[id]));
+    }
   }
   return out;
 }

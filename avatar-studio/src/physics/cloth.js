@@ -98,7 +98,8 @@ export class Cloth {
     const subU = opts.subU ?? 3;
     const subV = opts.subV ?? 3;
     const maxC = this.wrap ? this.cols : this.cols - 1;
-    this.fu = maxC * subU + (this.wrap ? 0 : 1);
+    this.fu = maxC * subU + 1; // no anel, a última coluna repete a primeira (costura do padrão fica na emenda)
+    this.seamOffset = opts.seamOffset || 0; // coluna de simulação em que a malha de render começa
     this.fv = (this.rows - 1) * subV + 1;
     this.subU = subU;
     this.subV = subV;
@@ -126,12 +127,12 @@ export class Cloth {
         void c0;
       }
     }
-    const lastI = this.wrap ? this.fu : this.fu - 1;
+    const lastI = this.fu - 1;
     for (let j = 0; j < this.fv - 1; j++) {
       for (let i = 0; i < lastI; i++) {
         const a = j * this.fu + i;
-        const b = j * this.fu + ((i + 1) % this.fu);
-        const c = (j + 1) * this.fu + ((i + 1) % this.fu);
+        const b = j * this.fu + i + 1;
+        const c = (j + 1) * this.fu + i + 1;
         const d = (j + 1) * this.fu + i;
         // enrolamento: a normal aponta para fora da saia (anel visto de cima, sentido horário)
         ind.push(a, d, c, a, c, b);
@@ -168,6 +169,22 @@ export class Cloth {
     this.rest.set(rest);
     this._buildConstraints();
     this.resetToRest();
+  }
+
+  /**
+   * Novo formato de repouso SEM reiniciar a simulação (o corpo está mudando): as partículas continuam onde
+   * estão e seguem o novo alvo; a colisão as mantém fora do corpo. Evita "saltos" durante o repique.
+   */
+  retarget(rest) {
+    this.rest.set(rest);
+    this._buildConstraints();
+    const head = this.rig.headWorld[this.attach];
+    for (let i = 0; i < this.n; i++) {
+      this.local[i * 3] = this.rest[i * 3] - head.x;
+      this.local[i * 3 + 1] = this.rest[i * 3 + 1] - head.y;
+      this.local[i * 3 + 2] = this.rest[i * 3 + 2] - head.z;
+    }
+    this.updateGoals();
   }
 
   updateGoals() {
@@ -301,7 +318,7 @@ export class Cloth {
           const row = rr + a - 1;
           for (let b = 0; b < 4; b++) {
             const wc = bu[b];
-            const q = this._idx(row, c0 + b - 1) * 3;
+            const q = this._idx(row, c0 + b - 1 + this.seamOffset) * 3;
             const ww = wr * wc;
             px += x[q] * ww; py += x[q + 1] * ww; pz += x[q + 2] * ww;
           }

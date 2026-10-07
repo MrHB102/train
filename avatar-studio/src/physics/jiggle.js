@@ -59,6 +59,11 @@ export class Jiggle {
     for (const it of this.items) it.v.add(vec);
   }
 
+  /** Impulso (m/s, espaço do avatar) só nas juntas de uma Region: 'bust' | 'glutes' | 'thighs' | 'belly'. */
+  kickRegion(region, vec) {
+    for (const it of this.items) if (it.region === region) it.v.add(vec);
+  }
+
   /** Quanto o Soft Tissue "pesa": cresce com o tamanho (Traits) e reduz a frequência. */
   bigness(region, vals) {
     if (region === 'bust') return Math.max(0, (vals['bust.size'] - 0.3) / 0.7) + Math.max(0, vals['bust.extraVolume']) * 0.65;
