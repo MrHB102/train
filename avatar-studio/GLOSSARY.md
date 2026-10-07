@@ -103,7 +103,7 @@ A looping animation of the Rig, such as Idle, Walk, Strut or Dance.
 _Avoid_: animation clip, action
 
 **Ground Contact**:
-The rule that the lowest point of the Avatar always rests on the Stage floor, whatever the Traits, Heel Height or Pose.
+The rule that the lowest point of the Avatar always rests on the Stage floor, whatever the Traits, Heel Height or Pose. With shoes, the lowest point is the Sole: the Avatar rises by its thickness.
 _Avoid_: grounding, floor snap
 
 **Recoil**:
@@ -168,13 +168,33 @@ _Avoid_: prop, add-on
 The extra thickness under a Shell that smooths the Body's contour over the Bust. At zero, thin fabric traces the form (the "tent").
 _Avoid_: cup, lining
 
+**Layer**:
+The order in which Garments are worn over each other: Base Layer, legwear, pieces, over-pieces (apron, sleeves), accessories. An outer Garment always clears the thickness of the ones under it, whatever their Padding, and a Drape never crosses the Drape under it.
+_Avoid_: z-order, stacking
+
 **Fabric**:
 The material look of a Garment: satin, latex, cotton, lace, fishnet, velvet.
 _Avoid_: texture, material
 
 **Trim**:
-A decorative edge or seam detail on a Garment, such as a lace edge, binding or piping.
+A decorative edge or seam detail on a Garment, such as a lace edge, binding or piping. Ribbons carry no Trim.
 _Avoid_: border, decoration
+
+**Pattern**:
+A print repeated over a Fabric: stripes, pinstripe, gingham, polka dots, tartan. It is measured in meters over the cloth, so dots keep their size on the Bust, the waist and a flared skirt.
+_Avoid_: print, texture
+
+**Pleat**:
+A sewn fold of a skirt (the school skirt). It is shown on the cloth's visible surface only; the simulation underneath stays smooth.
+_Avoid_: crease, ruffle
+
+**Toe Box**:
+The closed front of a shoe that encloses the toes, as one smooth shell from the vamp to a rounded tip beyond the longest toe.
+_Avoid_: toe cap, bico
+
+**Sole**:
+The layer of a shoe under the foot (6.6 mm), a separate color from the upper. The Avatar rises by its thickness so the Sole, not the Skin, meets the floor.
+_Avoid_: outsole, platform
 
 **Heel Height**:
 How high shoes lift the heel; it tilts the feet and lifts the Avatar while Ground Contact still holds.

@@ -1,6 +1,6 @@
 # 0010 — Footwear is procedural
 
-**Status**: accepted
+**Status**: accepted; the toe box and the sole thickness are superseded by [0012](0012-toe-box-hull-and-sole.md)
 
 **Context.** The CC0 MakeHuman shoes are flat men's and sports shoes; there is no high heel. Shoes must also fit any foot size and Heel Height, and keep Ground Contact.
 

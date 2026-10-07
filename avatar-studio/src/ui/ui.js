@@ -45,7 +45,7 @@ export function createUI(app) {
     const hidden = document.body.classList.contains('hidepanel');
     const mobile = window.innerWidth <= 760;
     if (hidden) app.engine.setViewShift(0, 0);
-    else if (mobile) app.engine.setViewShift(0, window.innerHeight * 0.2);
+    else if (mobile) app.engine.setViewShift(0, window.innerHeight * 0.215);
     else app.engine.setViewShift(194, 0);
   };
   window.addEventListener('resize', fitView);

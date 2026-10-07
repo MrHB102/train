@@ -25,7 +25,7 @@ const defaultDesign = () => ({ v: 1, traits: { ...PRESET_BY_ID[DEFAULT_PRESET].t
 
 /** Enquadramentos da câmera (posições no espaço de referência do corpo; az em graus, 0 = frente). */
 export const FOCUS = {
-  full: { t: [0, 0.07, 0], d: 3.6, az: 0, el: 4 },
+  full: { t: [0, -0.1, 0], d: 3.7, az: 0, el: 4 },
   bust: { t: [0, 0.33, 0.07], d: 1.6, az: 0, el: 4 },
   waist: { t: [0, 0.14, 0.05], d: 1.7, az: 0, el: 4 },
   hips: { t: [0, -0.04, 0.03], d: 1.9, az: 18, el: 4 },
@@ -186,7 +186,7 @@ export class App {
     const el = (f.el * Math.PI) / 180;
     // telas estreitas (celular em pé): afasta a câmera para o enquadramento caber também na largura
     const aspect = e.camera.aspect || 1;
-    const k = aspect < 0.8 ? 1 + (0.8 - aspect) * 1.9 : 1;
+    const k = aspect < 0.8 ? 1 + (0.8 - aspect) * 3.2 : 1;
     const pos = target.clone().add(new THREE.Vector3(Math.sin(az) * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el)).multiplyScalar(f.d * k));
     if (instant) {
       this.tween = null;

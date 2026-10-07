@@ -31,7 +31,7 @@ Atalhos: `Ctrl+Z` desfaz, `Ctrl+Y` refaz. Duplo clique no nome de um slider volt
 ## Como é feito
 
 - **Corpo**: malha base CC0 do MakeHuman (torso e pernas, cortada no pescoço e nos ombros), subdividida (Catmull-Clark) e morfada por alvos CC0 mais morfes procedurais (volumes, caído/empinado, dobra, sulco). Rig de 64 ossos com juntas virtuais para busto, glúteos, coxas e barriga. `tools/build-assets.mjs` gera o pacote binário.
-- **Roupas**: *Shells* recortados da superfície do corpo por campos escalares (seguem qualquer morph e pose), *Ribbons* (cordões e alças presos à superfície), *Drapes* (saia e avental em PBD com colisão), objetos rígidos (laço, salto) e o rabo de pelo (cascas instanciadas + mola).
+- **Roupas**: *Shells* recortados da superfície do corpo por campos escalares (seguem qualquer morph e pose), *Ribbons* (cordões e alças presos à superfície), *Drapes* (saia e avental em PBD com colisão; o avental nunca atravessa a saia e o peitilho passa por cima do corpete com enchimento), objetos rígidos (laço, salto), o bico do sapato (casco procedural) e o rabo de pelo (cascas instanciadas + mola). Padrões (bolinhas, xadrez, tartan) são medidos em metros sobre o tecido.
 - **Shaders**: pele com espalhamento subsuperficial pré-integrado, imperfeições procedurais ancoradas no corpo e anatomia por campo de altura; tecidos procedurais (cetim, látex, couro, jeans, veludo, renda, arrastão, meia fina).
 - **Repique**: cada Trait/Dial segue o alvo por uma mola subamortecida e dá um impulso no Jiggle (ADR 0008).
 - **Física**: Jiggle (massa-mola 3D por região), saia/avental PBD, rabo com mola.
@@ -39,7 +39,7 @@ Atalhos: `Ctrl+Z` desfaz, `Ctrl+Y` refaz. Duplo clique no nome de um slider volt
 ## Verificação
 
 ```bash
-npm run validate   # modelo (15 verificações), catálogo de Traits e roupas (39 verificações)
+npm run validate   # modelo (15 verificações), catálogo de Traits e roupas (59 verificações)
 npm run build && npm run preview &   # e depois:
 npm run e2e        # 25 verificações no navegador (Chromium headless)
 ```
@@ -70,4 +70,4 @@ tools          pipeline de dados, validações, e2e, captura de tela, empacotame
 - Torso e pernas apenas: sem cabeça, braços, orelhas, cabelo, punhos ou rosto. Os cortes são fechados por cápsulas de manequim.
 - Só mulher adulta (idade de 25 a 80) e a camada-base sempre presente; o corpo nunca é mostrado nu.
 - O skill `3d-modeling` foi instalado sem as pastas `references/`; foram aplicados os princípios do texto principal.
-- A ponta dos sapatos é um volume estilizado. A anatomia da pele é relevo e sombra, não muda a silhueta.
+- O bico dos sapatos é um volume estilizado (não a forma dos dedos). A anatomia da pele é relevo e sombra, não muda a silhueta.
