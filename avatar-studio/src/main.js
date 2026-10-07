@@ -23,11 +23,15 @@ async function main() {
   skin.setLandmarks(ctx, 7);
   body.mesh.material = skin;
   const noise = skin.u.uNoise.value;
-  const matTop = new FabricMaterial({ noise, fabric: 'knit', color: '#e9e4e0', trim: 'band', trimColor: '#cfc8c4', trimWidth: 0.014 });
-  const matBottom = new FabricMaterial({ noise, fabric: 'cotton', color: '#e9e4e0', trim: 'band', trimColor: '#cfc8c4', trimWidth: 0.012 });
+  const matTop = new FabricMaterial({ noise, fabric: 'cotton', color: '#f2eeea' });
+  const matBottom = new FabricMaterial({ noise, fabric: 'cotton', color: '#f2eeea' });
   const wardrobe = new Wardrobe(body, ctx);
-  wardrobe.add('base.top', { ...baseTop(ctx), material: matTop, layer: 1 });
-  wardrobe.add('base.bottom', { ...baseBottom(ctx), material: matBottom, layer: 1 });
+  const addBase = (which, res, mat) => {
+    wardrobe.add(`base.${which}`, { ...res.shell, material: mat, layer: 1 });
+    res.ribbons.forEach((r, i) => wardrobe.addRibbon(`base.${which}.r${i}`, { ...r, material: mat, width: 0.0042, profile: 'round', sides: 6, offset: 0.0008, layer: 1 }));
+  };
+  addBase('top', baseTop(ctx, { style: 'triangle' }), matTop);
+  addBase('bottom', baseBottom(ctx, { style: 'bikini' }), matBottom);
   engine.stage.add(body.group);
   const animator = new Animator(body);
   animator.setMotion('none');

@@ -3,6 +3,7 @@
 // e reduz overdraw.
 import * as THREE from 'three';
 import { Shell } from './shell.js';
+import { Ribbon } from './ribbon.js';
 
 export class Wardrobe {
   constructor(body, ctx) {
@@ -21,6 +22,16 @@ export class Wardrobe {
     this.body.group.add(shell.mesh);
     this.updateCoverage();
     return shell;
+  }
+
+  /** Fita/cordão colado ao corpo (não esconde nada por baixo). */
+  addRibbon(id, spec) {
+    this.remove(id, true);
+    const r = new Ribbon(this.ctx, spec);
+    r.id = id;
+    this.items.set(id, r);
+    this.body.group.add(r.mesh);
+    return r;
   }
 
   remove(id, silent = false) {

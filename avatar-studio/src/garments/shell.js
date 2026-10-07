@@ -19,13 +19,49 @@ export class Shell {
     const { N, pkg } = ctx;
     const F = new Float32Array(N);
     for (let v = 0; v < N; v++) F[v] = spec.field(v, ctx);
-    const edge = Float32Array.from(F); // distância (m) à borda antes do snap
+    const edge = Float32Array.from(F); // distância (m) à borda antes do snap (negativo = dentro)
+    // distância de acabamento (m, >= 0 dentro): por padrão a mesma borda do corte; spec.edge restringe o
+    // acabamento a só algumas bordas (ex.: barra da manga, sem debrum na cava)
+    const trimD = new Float32Array(N);
+    for (let v = 0; v < N; v++) trimD[v] = spec.edge ? spec.edge(v, ctx) : -F[v];
     const res = compactClip(clipTriangles(pkg.indices, F, spec.snap ?? 0.0002));
-    this.vertices = res.vertices;
-    this.count = this.vertices.length;
-    const M = this.count;
+    let verts = res.vertices;
+    const tris = res.tris;
     this.srcTri = res.srcTri; // triângulo do corpo que originou cada triângulo do Shell
-    this.indices = res.tris;
+
+    // coordenadas de padrão: do vértice mais próximo; se o padrão é periódico (cilindro), divide os
+    // triângulos que atravessam a costura duplicando vértices com u deslocado de um período
+    let uvList = verts.map((vt) => (spec.uv ? spec.uv(vt.t < 0.5 ? vt.a : vt.b, ctx) : [0, 0]));
+    if (spec.uv && spec.uvPeriod) {
+      const P = spec.uvPeriod;
+      const copies = new Map();
+      const nv = [...verts];
+      const nu = [...uvList];
+      for (let t = 0; t < tris.length; t += 3) {
+        const u0 = uvList[tris[t]][0];
+        for (let k = 1; k < 3; k++) {
+          const id = tris[t + k];
+          const du = uvList[id][0] - u0;
+          const shift = du > P / 2 ? -P : du < -P / 2 ? P : 0;
+          if (!shift) continue;
+          const key = id * 3 + (shift > 0 ? 1 : 2);
+          let c = copies.get(key);
+          if (c === undefined) {
+            c = nv.length;
+            nv.push(verts[id]);
+            nu.push([uvList[id][0] + shift, uvList[id][1]]);
+            copies.set(key, c);
+          }
+          tris[t + k] = c;
+        }
+      }
+      verts = nv;
+      uvList = nu;
+    }
+    this.vertices = verts;
+    this.count = verts.length;
+    this.indices = tris;
+    const M = this.count;
 
     // triângulos do corpo totalmente cobertos (com margem) por este Shell
     this.covered = new Set();
@@ -49,12 +85,9 @@ export class Shell {
     this.vertices.forEach((vt, k) => {
       const { a, b, t } = vt;
       for (let c = 0; c < 3; c++) rest[k * 3 + c] = ref.pos[a * 3 + c] * (1 - t) + ref.pos[b * 3 + c] * t;
-      edgeA[k] = t === 0 ? Math.max(0, -edge[a]) : 0;
-      if (spec.uv) {
-        const uv = spec.uv(a, ctx, b, t);
-        uvA[k * 2] = uv[0];
-        uvA[k * 2 + 1] = uv[1];
-      }
+      edgeA[k] = Math.max(0, trimD[a] * (1 - t) + trimD[b] * t);
+      uvA[k * 2] = uvList[k][0];
+      uvA[k * 2 + 1] = uvList[k][1];
       const m = new Map();
       for (let j = 0; j < 4; j++) {
         const wa = pkg.skinWeight[a * 4 + j] / 255;
@@ -65,7 +98,7 @@ export class Shell {
         }
       }
       const top = [...m.entries()].sort((x, y) => y[1] - x[1]).slice(0, 4);
-      const tot = top.reduce((s, e) => s + e[1], 0) || 1;
+      const tot = top.reduce((s2, e) => s2 + e[1], 0) || 1;
       for (let j = 0; j < 4; j++) {
         skinIndex[k * 4 + j] = top[j] ? top[j][0] : 0;
         skinWeight[k * 4 + j] = top[j] ? top[j][1] / tot : 0;

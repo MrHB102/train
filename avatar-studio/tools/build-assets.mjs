@@ -504,15 +504,23 @@ const foldGroove = (p, n) => {
 };
 
 const procedural = {
+  // Volume do busto: campo suave de inflação a partir de um centro dentro do seio. Usa a direção radial
+  // (posição), não a normal local do vértice: assim o mamilo e a aréola avançam junto com a pele ao redor
+  // e o relevo do bico é preservado em qualquer tamanho (a normal local fazia o bico virar cratera).
   'bust-volume': (v, p, n) => {
     let best = null;
     for (let s = 0; s < 2; s++) {
-      const c = sub(nipples[s], mul(nippleNormals[s], 0.4));
+      const nn = nippleNormals[s];
+      const c = sub(nipples[s], mul(nn, 0.4));
       const r = sub(p, c);
-      const w = 1 - smoothstep(0.25, 1.35, len(r));
-      if (w <= 0 || dot(n, nippleNormals[s]) < -0.1) continue;
-      const dir = norm(add(mul(n, 0.45), mul(norm(r), 0.55)));
-      const amp = 0.36 * w * smoothstep(-0.1, 0.45, dot(n, nippleNormals[s]));
+      const rl = len(r);
+      const w = 1 - smoothstep(0.25, 1.35, rl);
+      if (w <= 0) continue;
+      const rd = norm(r);
+      const facing = dot(rd, nn);
+      if (facing < -0.1) continue;
+      const amp = 0.36 * w * smoothstep(-0.1, 0.45, facing);
+      const dir = norm(add(mul(nn, 0.45), mul(rd, 0.55)));
       if (!best || amp > best.amp) best = { amp, dir };
     }
     return best && best.amp > 1e-4 ? mul(best.dir, best.amp) : null;
