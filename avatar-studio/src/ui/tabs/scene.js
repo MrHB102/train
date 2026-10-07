@@ -64,7 +64,18 @@ export function buildSceneTab(app) {
   gCam.body.append(focus.el, auto.el, rot.el, exp.el);
   refreshers.push(() => (auto.set(app.view.autoRotate), rot.set(app.view.rotateSpeed), exp.set(app.view.exposure)));
 
-  root.append(gPose.el, gMove.el, gHeel.el, gCam.el);
-  void tr;
+  const gQ = group({ pt: 'Qualidade gráfica', en: 'Graphics quality' });
+  const quality = chips({
+    items: [
+      { id: 'low', label: { pt: 'Leve (sem sombras)', en: 'Light (no shadows)' } },
+      { id: 'medium', label: { pt: 'Média', en: 'Medium' } },
+      { id: 'high', label: { pt: 'Alta', en: 'High' } },
+    ],
+    value: app.view.quality,
+    onPick: (id) => (app.setView({ quality: id }), quality.set(id), app.commit()),
+  });
+  gQ.body.append(h('div.hint', tr({ pt: 'Use Leve em celulares e computadores mais fracos.', en: 'Use Light on phones and weaker computers.' })), quality.el);
+  refreshers.push(() => quality.set(app.view.quality));
+  root.append(gPose.el, gMove.el, gHeel.el, gCam.el, gQ.el);
   return { el: root, refresh: () => refreshers.forEach((r) => r()), activate: () => app.focus('full') };
 }

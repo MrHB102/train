@@ -8,7 +8,10 @@
     "dev": "vite --host",
     "build": "vite build",
     "preview": "vite preview --host",
-    "assets": "node tools/build-assets.mjs"
+    "assets": "node tools/build-assets.mjs",
+    "validate": "node tools/validate-model.mjs && node tools/check-domain.mjs && node tools/validate-garments.mjs",
+    "pack": "vite build && node tools/pack-artifact.mjs",
+    "e2e": "node tools/e2e.mjs http://127.0.0.1:4173/"
   },
   "dependencies": {
     "three": "^0.186.1"

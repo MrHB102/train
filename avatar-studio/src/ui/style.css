@@ -14,19 +14,6 @@
   --radius: 14px;
   color-scheme: dark;
 }
-:root[data-theme='light'] {
-  --bg0: #e9edf6;
-  --bg1: #f6f8fd;
-  --panel: rgba(255, 255, 255, 0.82);
-  --panel-solid: #ffffff;
-  --line: rgba(40, 70, 140, 0.16);
-  --line2: rgba(40, 70, 140, 0.32);
-  --accent: #0b86b0;
-  --accent-d: #0a5f7e;
-  --text: #121a30;
-  --muted: #5a6788;
-  color-scheme: light;
-}
 * {
   box-sizing: border-box;
 }
@@ -740,14 +727,24 @@ input[type='color'] {
     left: 8px;
     right: 8px;
     top: 8px;
-    gap: 6px;
-    padding: 0 6px 0 10px;
+    height: auto;
+    flex-wrap: wrap;
+    gap: 2px 6px;
+    padding: 4px 6px 2px 10px;
+  }
+  .brand {
+    flex: 1;
   }
   .brand small {
     display: none;
   }
+  .tabs {
+    order: 3;
+    flex: 0 0 100%;
+    justify-content: flex-start;
+  }
   .tab {
-    padding: 8px 10px;
+    padding: 7px 10px;
   }
   .panel {
     top: auto;
@@ -765,4 +762,39 @@ input[type='color'] {
   .bottombar .pill.right {
     display: none;
   }
+}
+
+/* ------------------------------------------------------------ janela de arquivo (captura, JSON) */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(3, 5, 10, 0.72);
+  backdrop-filter: blur(6px);
+}
+.ovcard {
+  width: min(720px, 100%);
+  max-height: 100%;
+  overflow: auto;
+  padding: 12px 14px 14px;
+  border-radius: var(--radius);
+  background: var(--panel-solid);
+  border: 1px solid var(--line2);
+}
+.ovhead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.ovbody img {
+  display: block;
+  max-width: 100%;
+  max-height: 62vh;
+  margin: 0 auto;
+  border-radius: 10px;
 }

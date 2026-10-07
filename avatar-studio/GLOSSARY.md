@@ -27,7 +27,7 @@ The complete, serializable description of an Avatar: every Trait value, Outfit c
 _Avoid_: config, profile, save file, state
 
 **Preset**:
-A named Design that ships with the app.
+A named Body setup (Trait and Dial values) that ships with the app, from Natural to Giant. Applying one animates the Body there and leaves Skin and Outfit alone.
 _Avoid_: template, default avatar
 
 ### Shaping the Body
@@ -45,7 +45,7 @@ The span of a Trait's values that stays anatomically plausible.
 _Avoid_: normal range, limits
 
 **Extended Range**:
-The wider, opt-in span of a Trait that allows stylized or exaggerated proportions.
+The wider span of a Trait that allows stylized or exaggerated proportions. Sliders cover it by default and mark where the Natural Range ends; the Body can briefly pass beyond it during a Recoil.
 _Avoid_: extreme mode, cheat range
 
 **Macro Trait**:
@@ -106,6 +106,14 @@ _Avoid_: animation clip, action
 The rule that the lowest point of the Avatar always rests on the Stage floor, whatever the Traits, Heel Height or Pose.
 _Avoid_: grounding, floor snap
 
+**Recoil**:
+The springy overshoot with which the Body reaches a new Trait or Dial value: it grows past the target, settles back and sets off a Jiggle in the Soft Tissue. Its strength is a Dynamics setting; at zero the Body goes straight to the value.
+_Avoid_: bounce animation, easing, tween
+
+**Contact**:
+The rule that two masses of the Body meet without crossing: the breasts press together into a cleavage and the thighs touch along their length.
+_Avoid_: collision, clipping
+
 **Soft Tissue**:
 The Regions whose flesh visibly moves with the Avatar: Bust, Glutes, Thighs and Belly.
 _Avoid_: jiggle zone, physics region
@@ -137,7 +145,7 @@ A single piece of clothing: a leotard, stockings, a skirt, an apron, shoes.
 _Avoid_: clothes, item, piece
 
 **Base Layer**:
-The minimal Garment that is always worn beneath everything else, so the Body is never shown bare.
+The bikini (a triangle or bandeau top and a bikini or boyshort bottom) that is always worn beneath everything else, so the Body is never shown bare. It tucks itself inside any Garment that covers the same area.
 _Avoid_: underwear, default clothes
 
 **Shell**:
@@ -147,6 +155,10 @@ _Avoid_: skin-tight clothing, overlay
 **Drape**:
 A Garment or Accessory that hangs free and moves under simulated cloth physics, such as a skirt, an apron, a ribbon or a tail.
 _Avoid_: cloth, loose garment, soft garment
+
+**Ribbon**:
+A thin Garment part that follows the Body's surface along a path: the strings of a bikini, a strap, a tie. It can be finer than the Body's mesh because it is built from the path, not cut from the surface.
+_Avoid_: string, cord, line
 
 **Accessory**:
 An addition that is not clothing: a tail, a collar bow, a ribbon, an anklet.
@@ -185,6 +197,10 @@ _Avoid_: spot, blemish
 **Imperfection**:
 Any natural irregularity of the Skin: pores, mottling, redness, veins and Marks. Each one can be dialed down to zero, and all together give flawless skin.
 _Avoid_: defect, texture detail, noise
+
+**Anatomy**:
+The relief and shading of bones, tendons and muscles on the Skin: collarbones, neck tendons, breastbone, ribs, abdominal line, navel, hip bones, spine and lower-back dimples. It never changes the Body's geometry, and each group can be dialed from nothing to pronounced.
+_Avoid_: bone detail, normal map, bump
 
 **Sheen**:
 The glossy or shimmering finish of the Skin.

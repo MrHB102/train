@@ -1,6 +1,6 @@
 // Aba Presets: personagens prontos (do natural ao gigante), salvar/carregar, compartilhar, exportar e captura.
 import { h } from '../dom.js';
-import { group, button, toast, select } from '../components.js';
+import { group, button, toast, select, showBlob } from '../components.js';
 import { tr, s } from '../i18n.js';
 import { CHARACTER_PRESETS } from '../../domain/presets.js';
 
@@ -93,11 +93,7 @@ export function buildPresetsTab(app) {
           toast(tr({ pt: 'Código inválido', en: 'Invalid code' }));
         }
       }),
-      button('JSON', () => {
-        const blob = new Blob([JSON.stringify(app.serialize(), null, 2)], { type: 'application/json' });
-        const a = h('a', { href: URL.createObjectURL(blob), download: 'avatar.json' });
-        a.click();
-      })
+      button('JSON', () => showBlob(new Blob([JSON.stringify(app.serialize(), null, 2)], { type: 'application/json' }), 'avatar.json'))
     )
   );
 
@@ -106,11 +102,7 @@ export function buildPresetsTab(app) {
   gX.body.append(
     h(
       'div.btnrow',
-      button(s('ui.screenshot'), async () => {
-        const blob = await app.screenshot();
-        const a = h('a', { href: URL.createObjectURL(blob), download: 'avatar.png' });
-        a.click();
-      })
+      button(s('ui.screenshot'), async () => showBlob(await app.screenshot(), 'avatar.png'))
     )
   );
   root.append(gP.el, gS.el, gC.el, gX.el);

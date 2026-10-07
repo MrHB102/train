@@ -1,7 +1,7 @@
 // Interface: barra superior com abas, painel lateral, barra inferior com foco de câmera e repique.
 import './style.css';
 import { h } from './dom.js';
-import { chips, toast } from './components.js';
+import { chips, showBlob } from './components.js';
 import { s, tr, getLang, setLang, onLang, STRINGS } from './i18n.js';
 import { buildBodyTab } from './tabs/body.js';
 import { buildSkinTab } from './tabs/skin.js';
@@ -31,7 +31,10 @@ const FOCUS_SHORT = {
 };
 
 export function createUI(app) {
-  let current = localStorage.getItem('avatar-studio.tab') || 'body';
+  let current = 'body';
+  try {
+    current = localStorage.getItem('avatar-studio.tab') || 'body';
+  } catch {}
   if (!TABS.some(([id]) => id === current)) current = 'body';
   let built = {};
   const dirty = new Set();
@@ -54,11 +57,7 @@ export function createUI(app) {
   const redoBtn = h('button.ibtn', { title: s('ui.redo') + ' (Ctrl+Y)', onclick: () => app.redo() }, '↷');
   const langBtn = h('button.ibtn', { title: s('ui.language'), onclick: () => setLang(getLang() === 'pt' ? 'en' : 'pt') }, getLang().toUpperCase());
   const hideBtn = h('button.ibtn', { title: 'Ocultar/mostrar painel', onclick: () => (document.body.classList.toggle('hidepanel'), fitView()) }, '◧');
-  const shotBtn = h('button.ibtn', { title: s('ui.screenshot'), onclick: async () => {
-    const blob = await app.screenshot();
-    h('a', { href: URL.createObjectURL(blob), download: 'avatar.png' }).click();
-    toast(tr({ pt: 'Captura salva', en: 'Screenshot saved' }));
-  } }, '▣');
+  const shotBtn = h('button.ibtn', { title: s('ui.screenshot'), onclick: async () => showBlob(await app.screenshot(), 'avatar.png') }, '▣');
   const tabsEl = h('nav.tabs');
   const top = h('div.topbar', h('div.brand', h('i'), 'Avatar Studio', h('small', tr({ pt: 'torso e pernas', en: 'torso & legs' }))), tabsEl, h('div.topactions', undoBtn, redoBtn, shotBtn, hideBtn, langBtn));
 

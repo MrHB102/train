@@ -183,3 +183,50 @@ export function toast(msg, ms = 2200) {
     setTimeout(() => t.remove(), 300);
   }, ms);
 }
+
+/**
+ * Entrega um arquivo gerado (captura de tela, JSON). Em páginas hospedadas dentro de um visualizador o download por
+ * link é bloqueado, então além de tentar baixar mostra o conteúdo numa janela: imagem (clique direito/segurar para
+ * salvar, ou copiar) ou texto selecionável.
+ */
+export function showBlob(blob, name) {
+  try {
+    const a = h('a', { href: URL.createObjectURL(blob), download: name });
+    a.click();
+  } catch {}
+  const isImg = blob.type.startsWith('image/');
+  const close = () => ov.remove();
+  const body = h('div.ovbody');
+  const ov = h(
+    'div.overlay',
+    { onclick: (e) => e.target === ov && close() },
+    h(
+      'div.ovcard',
+      h('div.ovhead', h('b', name), h('button.ibtn', { type: 'button', onclick: close }, '✕')),
+      body,
+      h('div.hint', isImg ? tr({ pt: 'Clique com o botão direito (ou segure) na imagem para salvar.', en: 'Right-click (or long-press) the image to save it.' }) : tr({ pt: 'Copie o texto abaixo.', en: 'Copy the text below.' }))
+    )
+  );
+  if (isImg) {
+    const url = URL.createObjectURL(blob);
+    body.append(h('img', { src: url, alt: name }));
+    const copy = h('button.btn', { type: 'button' }, tr({ pt: 'Copiar imagem', en: 'Copy image' }));
+    copy.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
+        toast(tr({ pt: 'Imagem copiada', en: 'Image copied' }));
+      } catch {
+        toast(tr({ pt: 'Seu navegador não permite copiar a imagem; salve pelo menu', en: 'Your browser cannot copy the image; use the menu to save' }));
+      }
+    });
+    ov.querySelector('.ovcard').append(h('div.btnrow', copy));
+  } else {
+    blob.text().then((t) => {
+      const ta = h('textarea', { readOnly: true, value: t, style: { minHeight: '40vh' } });
+      body.append(ta);
+      ta.select();
+    });
+  }
+  document.body.append(ov);
+  return ov;
+}

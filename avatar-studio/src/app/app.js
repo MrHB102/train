@@ -17,6 +17,11 @@ import { SkinMaterial } from '../shaders/skin.js';
 import { TRAITS, TRAIT_BY_ID } from '../domain/traits.js';
 import { DIALS } from '../domain/dials.js';
 import { defaultSkin, SKIN_TONES, SKIN_PARAMS } from '../domain/skin.js';
+import { PRESET_BY_ID } from '../domain/presets.js';
+
+/** Design inicial: anime curvilíneo (proporções anime, quadril e coxas marcantes). */
+export const DEFAULT_PRESET = 'anime';
+const defaultDesign = () => ({ v: 1, traits: { ...PRESET_BY_ID[DEFAULT_PRESET].traits }, dials: { ...PRESET_BY_ID[DEFAULT_PRESET].dials } });
 
 /** Enquadramentos da câmera (posições no espaço de referência do corpo; az em graus, 0 = frente). */
 export const FOCUS = {
@@ -36,7 +41,8 @@ export const DYN_DEFAULT = {
   jiggle: { enabled: true, bust: 1, glutes: 1, thighs: 1, belly: 1, damping: 1, stiffness: 1 },
   cloth: { wind: 0, stiffness: 1 },
 };
-export const VIEW_DEFAULT = { pose: 'stand', motion: 'idle', speed: 1, heel: 0, autoRotate: false, rotateSpeed: 0.5, exposure: 1.05 };
+const isMobile = typeof navigator !== 'undefined' && /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent || '');
+export const VIEW_DEFAULT = { pose: 'stand', motion: 'idle', speed: 1, heel: 0, autoRotate: false, rotateSpeed: 0.5, exposure: 1.05, quality: isMobile ? 'medium' : 'high' };
 
 const clone = (o) => JSON.parse(JSON.stringify(o));
 
@@ -82,6 +88,7 @@ export class App {
     app.applyView();
     app.engine.onUpdate((dt) => app._update(dt));
     app.dresser.onChange(() => (app.applyView(), app.emit('design')));
+    app.restore(defaultDesign(), { snap: true, silent: true });
     app.engine.start();
     app.history = [app.serialize()];
     return app;
@@ -161,10 +168,14 @@ export class App {
     this.engine.state.autoRotate = v.autoRotate;
     this.engine.state.rotateSpeed = v.rotateSpeed;
     this.engine.renderer.toneMappingExposure = v.exposure;
+    if (this._quality !== v.quality) {
+      this._quality = v.quality;
+      this.engine.setQuality(v.quality);
+    }
   }
 
   // ------------------------------------------------------------------ câmera
-  focus(name) {
+  focus(name, { instant = false } = {}) {
     const f = FOCUS[name];
     if (!f) return;
     const e = this.engine;
@@ -173,7 +184,17 @@ export class App {
     const target = this.body.group.localToWorld(new THREE.Vector3(...f.t));
     const az = (f.az * Math.PI) / 180;
     const el = (f.el * Math.PI) / 180;
-    const pos = target.clone().add(new THREE.Vector3(Math.sin(az) * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el)).multiplyScalar(f.d));
+    // telas estreitas (celular em pé): afasta a câmera para o enquadramento caber também na largura
+    const aspect = e.camera.aspect || 1;
+    const k = aspect < 0.8 ? 1 + (0.8 - aspect) * 1.9 : 1;
+    const pos = target.clone().add(new THREE.Vector3(Math.sin(az) * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el)).multiplyScalar(f.d * k));
+    if (instant) {
+      this.tween = null;
+      e.camera.position.copy(pos);
+      e.controls.target.copy(target);
+      e.controls.update();
+      return;
+    }
     this.tween = { t: 0, dur: 0.7, fromP: e.camera.position.clone(), fromT: e.controls.target.clone(), toP: pos, toT: target };
   }
   _tweenCamera(dt) {
@@ -254,7 +275,7 @@ export class App {
   }
 
   resetAll() {
-    this.restore({ v: 1 });
+    this.restore(defaultDesign());
   }
 
   /** Código para compartilhar: JSON compacto em base64url. */

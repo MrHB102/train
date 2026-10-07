@@ -88,6 +88,11 @@ export const DIALS = [
       'thighs.extraVolume': 0.35,
       'thighs.upperVolume': 0.45,
       'thighs.contact': 0.7,
+      // joelho e panturrilha acompanham um pouco: a transição coxa → perna fica contínua (sem "pernas de palito")
+      'knees.size': 0.2,
+      'calves.fullness': 0.3,
+      'calves.circumference': 0.22,
+      'ankles.size': 0.08,
     },
   },
   {

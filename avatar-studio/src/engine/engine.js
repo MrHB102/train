@@ -110,7 +110,27 @@ export function createEngine(container) {
     renderer.render(scene, camera);
   }
 
+  /** Qualidade gráfica: 'low' (sem sombras, resolução 1×), 'medium', 'high'. */
+  function setQuality(q) {
+    const dpr = window.devicePixelRatio || 1;
+    const cfg = { low: { px: 1, shadow: false, map: 512 }, medium: { px: Math.min(dpr, 1.5), shadow: true, map: 1024 }, high: { px: Math.min(dpr, 2), shadow: true, map: 2048 } }[q] || { px: Math.min(dpr, 2), shadow: true, map: 2048 };
+    renderer.setPixelRatio(cfg.px);
+    if (renderer.shadowMap.enabled !== cfg.shadow) {
+      renderer.shadowMap.enabled = cfg.shadow;
+      scene.traverse((o) => {
+        if (o.material) [].concat(o.material).forEach((m) => (m.needsUpdate = true));
+      });
+    }
+    if (key.shadow.mapSize.x !== cfg.map) {
+      key.shadow.mapSize.set(cfg.map, cfg.map);
+      key.shadow.map?.dispose();
+      key.shadow.map = null;
+    }
+    resize();
+  }
+
   return {
+    setQuality,
     renderer, scene, camera, controls, stage, key, rim, fill, pedestal, ring, state,
     onUpdate(fn) { updaters.add(fn); return () => updaters.delete(fn); },
     start() {

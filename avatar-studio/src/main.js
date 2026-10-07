@@ -6,13 +6,8 @@ async function main() {
   const loading = document.getElementById('loading');
   const app = await App.create(document.getElementById('app'));
   createUI(app);
-  app.focus('full');
-  // enquadramento inicial sem animação
-  app.tween = null;
+  app.focus('full', { instant: true });
   const f = app.engine;
-  f.camera.position.set(0, 1.0, 3.55);
-  f.controls.target.set(0, 0.86, 0);
-  f.controls.update();
   loading?.classList.add('done');
   setTimeout(() => loading?.remove(), 700);
 

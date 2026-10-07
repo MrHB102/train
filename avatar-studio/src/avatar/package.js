@@ -1,10 +1,23 @@
 // Carrega o pacote binário gerado por tools/build-assets.mjs
 const TYPES = { Float32Array, Uint16Array, Uint8Array, Int16Array, Int32Array, Uint32Array };
 
+/** Hospedagens que só servem texto (ex.: visualizador de artefatos) publicam o binário em base64 num .txt. */
+const useBase64 = () => typeof window !== 'undefined' && !!window.__AVATAR_B64;
+
 async function fetchBinary(url) {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
-  let buf = await res.arrayBuffer();
+  let buf;
+  if (useBase64()) {
+    const res = await fetch(url + '.b64.txt');
+    if (!res.ok) throw new Error(`${url}.b64.txt: HTTP ${res.status}`);
+    const bin = atob((await res.text()).trim());
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    buf = bytes.buffer;
+  } else {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
+    buf = await res.arrayBuffer();
+  }
   const b = new Uint8Array(buf);
   if (b.length > 2 && b[0] === 0x1f && b[1] === 0x8b) {
     const stream = new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip'));
