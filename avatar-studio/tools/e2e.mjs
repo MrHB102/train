@@ -33,6 +33,19 @@ for (const id of ['body', 'skin', 'outfit', 'dynamics', 'scene', 'presets']) {
   ok(`aba ${id} renderiza`, (await page.locator('.panel-body *').count()) > 5);
 }
 
+// 1b. nenhuma região do corpo mostra dois controles com o mesmo nome (Dial e Trait-base se confundiam)
+await page.click('.tab[data-id="body"]');
+const dupLabels = await page.evaluate(() => {
+  const out = [];
+  for (const c of [...document.querySelectorAll('.panel .chip')]) {
+    c.click();
+    const labels = [...document.querySelectorAll('.panel .srow .stxt')].map((x) => x.textContent.trim());
+    labels.forEach((l, i) => labels.indexOf(l) !== i && out.push(`${c.textContent.trim()}: ${l}`));
+  }
+  return out;
+});
+ok('nenhuma região do corpo repete o nome de um controle', dupLabels.length === 0, dupLabels.join('; '));
+
 // 2. sliders do corpo: arrasta o tamanho do busto ao máximo, com repique
 await page.click('.tab[data-id="body"]');
 await page.click('.chip[data-id="bust"]');

@@ -69,7 +69,7 @@ macro('proportions', 'general', L('Proporções (comuns ↔ ideais)', 'Proportio
 macro('ancestry.african', 'general', L('Morfologia africana', 'African morphology'), { neutral: 1 / 3, natural: [0, 1], extended: [0, 1], ancestry: true });
 macro('ancestry.asian', 'general', L('Morfologia asiática', 'Asian morphology'), { neutral: 1 / 3, natural: [0, 1], extended: [0, 1], ancestry: true });
 macro('ancestry.caucasian', 'general', L('Morfologia caucasiana', 'Caucasian morphology'), { neutral: 1 / 3, natural: [0, 1], extended: [0, 1], ancestry: true });
-macro('bust.size', 'bust', L('Tamanho do busto', 'Bust size'), { region: 'bust', neutral: 0.5, natural: [0, 1], extended: [0, 1.3] });
+macro('bust.size', 'bust', L('Copa (forma-base do busto)', 'Cup (base bust shape)'), { region: 'bust', neutral: 0.5, natural: [0, 1], extended: [0, 1.3] });
 macro('bust.firmness', 'bust', L('Firmeza do busto', 'Bust firmness'), { region: 'bust', neutral: 0.5, natural: [0, 1], extended: [0, 1.3] });
 
 // ------------------------------------------------------------------ Silhouette
@@ -121,14 +121,14 @@ detail('belly.navelHeight', 'belly', L('Altura do umbigo', 'Navel height'), betw
 detail('belly.navelDepth', 'belly', L('Profundidade do umbigo', 'Navel depth'), between('stomach', 'stomach-navel', 'in', 'out'), { natural: [-0.8, 0.8] });
 
 // ------------------------------------------------------------------ Hips & glutes
-detail('hips.width', 'hips', L('Largura do quadril', 'Hip width'), dec('hip', 'hip-scale-horiz'));
+detail('hips.width', 'hips', L('Largura da pelve (base)', 'Pelvis width (base)'), dec('hip', 'hip-scale-horiz'));
 detail('hips.depth', 'hips', L('Profundidade do quadril', 'Hip depth'), dec('hip', 'hip-scale-depth'));
 detail('hips.height', 'hips', L('Altura do quadril', 'Hip height'), dec('hip', 'hip-scale-vert'));
 detail('hips.circumference', 'hips', L('Contorno do quadril', 'Hip circumference'), dec('measure', 'measure-hips-circ'));
 detail('hips.forward', 'hips', L('Inclinação pélvica', 'Pelvic tilt'), between('hip', 'hip-trans', 'backward', 'forward'));
 detail('hips.lift', 'hips', L('Posição vertical', 'Vertical position'), between('hip', 'hip-trans', 'down', 'up'));
 detail('hips.tone', 'hips', L('Definição pélvica', 'Pelvic tone'), dec('pelvis', 'pelvis-tone'));
-detail('glutes.volume', 'glutes', L('Tamanho dos glúteos', 'Glute size'), dec('buttocks', 'buttocks-volume'), { natural: [-1, 1], extended: [-1.4, 1.7] });
+detail('glutes.volume', 'glutes', L('Volume-base dos glúteos', 'Glute base volume'), dec('buttocks', 'buttocks-volume'), { natural: [-1, 1], extended: [-1.4, 1.7] });
 // formas dos glúteos (morphs procedurais): Lift, dobra infraglútea e sulco central
 detail('glutes.lift', 'glutes', L('Posição (relaxado ↔ empinado)', 'Lift (relaxed ↔ perky)'), {
   neg: [['custom/glutes-lift-decr', 1], ['custom/glutes-fold-incr', 0.45]],
