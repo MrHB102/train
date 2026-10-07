@@ -42,6 +42,42 @@ export function linePath(ctx, pts, { facing = 1, step = 0.003 } = {}) {
   return { samples: out, closed: false };
 }
 
+/**
+ * Alça de ombro: parte de (x, yFront) na frente, sobe pela superfície, passa pelo topo do ombro e desce pelas costas
+ * até yBack, sempre no plano x = constante. Caminha sobre a malha de referência em passos de `step` (m): prevê o
+ * próximo ponto pela tangente e o projeta de volta na superfície com um raio ao longo da normal do plano, então
+ * funciona em qualquer curvatura (busto, clavícula, trapézio, costas) sem depender de raios retos.
+ * Devolve as amostras presas ao corpo, na ordem frente → ombro → costas.
+ */
+export function shoulderStrapPath(ctx, { x, yFront, yBack, step = 0.003, maxSteps = 400 }) {
+  const S = getSurface(ctx);
+  const first = S.cast([x, yFront, 0.6], [0, 0, -1], 1.2);
+  if (!first) return [];
+  const samples = [first];
+  let p = first.point;
+  let ty = 1;
+  let tz = 0; // tangente no plano (y, z): começa subindo
+  for (let k = 0; k < maxSteps; k++) {
+    const ny = -tz;
+    const nz = ty; // normal para fora, no plano
+    const h = S.cast([x, p[1] + ty * step + ny * 0.03, p[2] + tz * step + nz * 0.03], [0, -ny, -nz], 0.06);
+    if (!h) break;
+    const dy = h.point[1] - p[1];
+    const dz = h.point[2] - p[2];
+    const l = Math.hypot(dy, dz);
+    if (l < step * 0.25) break;
+    ty = ty * 0.35 + (dy / l) * 0.65;
+    tz = tz * 0.35 + (dz / l) * 0.65;
+    const tl = Math.hypot(ty, tz);
+    ty /= tl;
+    tz /= tl;
+    samples.push(h);
+    p = h.point;
+    if (ty < -0.2 && p[1] <= yBack) break;
+  }
+  return samples;
+}
+
 const tmpA = new THREE.Vector3();
 const tmpB = new THREE.Vector3();
 const tmpC = new THREE.Vector3();
@@ -103,7 +139,9 @@ export class Ribbon {
         const cross = round ? Math.sin((s / S) * Math.PI * 2) * (w / 2) : (s === 0 ? -1 : 1) * (w / 2);
         uv[o * 2] = arc * (spec.uvScale ?? 1);
         uv[o * 2 + 1] = cross;
-        edge[o] = round ? (w / 2) * (1 - Math.abs(Math.sin((s / S) * Math.PI * 2))) : w / 2 - Math.abs(cross);
+        // fitas e cordões não levam acabamento de borda (barra, debrum, picotado): distância "infinita" até a
+        // borda. Com 0 o shader de picotado descartaria a fita inteira (alça do avental sumia).
+        edge[o] = spec.edge ?? 1;
       }
     });
 

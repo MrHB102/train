@@ -34,6 +34,12 @@ export function bodyEnvelope(body, ys, cols, axis) {
         else e[c] = Math.max(e[c], 0.5 * e[c] + 0.25 * (a + b));
       }
     }
+    // dilata uma coluna e suaviza com [1 2 1]/4: o resultado nunca fica abaixo do corpo, mas os degraus viram rampas
+    // (o busto grande pendendo na altura da cintura deixava o anel com "penhascos" que dobravam o tecido)
+    const src = Float32Array.from(e);
+    const dil = new Float32Array(cols);
+    for (let c = 0; c < cols; c++) dil[c] = Math.max(src[(c + cols - 1) % cols], src[c], src[(c + 1) % cols]);
+    for (let c = 0; c < cols; c++) e[c] = 0.25 * dil[(c + cols - 1) % cols] + 0.5 * dil[c] + 0.25 * dil[(c + 1) % cols];
   }
   return env;
 }
@@ -81,6 +87,59 @@ export function buildSkirtRest(body, ctx, params) {
   }
   const circ = 2 * Math.PI * (Math.max(...wEnv) + hip) * 0.5;
   return { rest, rows, cols, length, yW, circ, axis };
+}
+
+/**
+ * Superfície da saia simulada como função (ângulo, altura) → raio, para peças que ficam por cima dela (o painel do
+ * avental). Lê a malha de render (a que se vê, com a interpolação suave entre partículas): a coluna i é o ângulo
+ * (i + seamOffset·subU) / (cols·subU) · 2π, com 0 = frente e + para +x.
+ */
+export class SkirtSurface {
+  /** Lê as posições atuais da malha de render da saia. */
+  read(cloth) {
+    const { fu, fv, pos, subU, seamOffset } = cloth;
+    const nc = fu - 1; // a última coluna repete a primeira
+    this.nc = nc;
+    this.rows = fv;
+    this.shift = seamOffset * subU;
+    let ax = 0;
+    let az = 0;
+    for (let i = 0; i < nc; i++) {
+      ax += pos[i * 3];
+      az += pos[i * 3 + 2];
+    }
+    this.ax = ax / nc;
+    this.az = az / nc;
+    const rho = (this.rho ??= new Float32Array(fv * nc));
+    const ys = (this.ys ??= new Float32Array(fv * nc));
+    for (let j = 0; j < fv; j++) {
+      for (let i = 0; i < nc; i++) {
+        const k = (j * fu + i) * 3;
+        rho[j * nc + i] = Math.hypot(pos[k] - this.ax, pos[k + 2] - this.az);
+        ys[j * nc + i] = pos[k + 1];
+      }
+    }
+  }
+
+  _column(i, y) {
+    const { rows, nc, rho, ys } = this;
+    let j = 0;
+    while (j < rows - 2 && ys[(j + 1) * nc + i] > y) j++;
+    const y0 = ys[j * nc + i];
+    const y1 = ys[(j + 1) * nc + i];
+    const t = y0 === y1 ? 0 : Math.min(1, Math.max(0, (y0 - y) / (y0 - y1)));
+    return rho[j * nc + i] * (1 - t) + rho[(j + 1) * nc + i] * t;
+  }
+
+  /** Raio da saia (a partir do eixo lido) no ângulo `theta` (rad, 0 = frente, + para +x) e altura `y`. */
+  radiusAt(theta, y) {
+    const n = this.nc;
+    let f = ((((theta / (Math.PI * 2)) % 1) + 1) % 1) * n - this.shift;
+    f = ((f % n) + n) % n;
+    const i0 = Math.floor(f);
+    const u = f - i0;
+    return this._column(i0, y) * (1 - u) + this._column((i0 + 1) % n, y) * u;
+  }
 }
 
 export function createSkirtCloth(body, ctx, params) {

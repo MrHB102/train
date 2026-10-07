@@ -33,6 +33,7 @@ export class Cloth {
     this.gravity = opts.gravity ?? 9.8;
     this.damping = opts.damping ?? 0.985;
     this.wind = 0;
+    this.layer = null; // restrição extra (cloth) => void, aplicada após as colisões: ex.: ficar por cima de outro tecido
     this.stiffness = 1; // multiplicador do shape matching
     this.iterations = opts.iterations ?? 5;
     const [kTop, kHem] = opts.shape ?? [0.55, 0.03];
@@ -249,6 +250,7 @@ export class Cloth {
           x[b] -= dx * corr * wb; x[b + 1] -= dy * corr * wb; x[b + 2] -= dz * corr * wb;
         }
         this.collide(colliders);
+        if (this.layer) this.layer(this);
       }
       for (let i = 0; i < n; i++) {
         if (w[i] === 0) {

@@ -168,6 +168,109 @@ for (const o of OUTFITS) {
   }
 }
 
+// 5) avental: alças contínuas (sem saltos nem voltas), fitas sem acabamento de borda, peitilho por cima do corpete com
+//    enchimento e painel sempre por fora da saia (a saia é outro tecido simulado) nos corpos extremos
+{
+  body.setState({}, neutralDials());
+  dresser.applyOutfit('maid');
+  const apron = dresser.entries.get('apron');
+  const straps = apron.parts.filter((p) => p.kind === 'ribbon');
+  let strapIssues = [];
+  for (const st of straps) {
+    const S = st.spec.samples;
+    let prev = null;
+    let ymax = -1e9;
+    for (let i = 1; i < S.length; i++) {
+      const d = [0, 1, 2].map((k) => S[i].point[k] - S[i - 1].point[k]);
+      const l = Math.hypot(...d);
+      const t = d.map((v) => v / (l || 1));
+      if (l < 2e-4 || l > 6e-3) strapIssues.push(`${st.id}: passo de ${(l * 1000).toFixed(1)} mm em ${i}`);
+      if (prev && t[0] * prev[0] + t[1] * prev[1] + t[2] * prev[2] < 0.5) strapIssues.push(`${st.id}: volta brusca em ${i}`);
+      prev = t;
+      ymax = Math.max(ymax, S[i].point[1]);
+    }
+    if (S.length < 60) strapIssues.push(`${st.id}: só ${S.length} amostras`);
+    if (ymax < ctx.L.y.neckBase - 0.05) strapIssues.push(`${st.id}: não passa pelo ombro (topo ${ymax.toFixed(3)})`);
+    if (S.at(-1).point[1] > ctx.base?.yW + 0.03 && S.length) strapIssues.push(`${st.id}: não chega ao cós`);
+    if (Math.min(...st.obj.geometry.attributes.aEdge.array) < 0.5) strapIssues.push(`${st.id}: aEdge < 0,5 (o picotado descartaria a fita)`);
+  }
+  check('avental: 2 alças contínuas passando pelo ombro até o cós, sem acabamento de borda', straps.length === 2 && strapIssues.length === 0, strapIssues.slice(0, 3).join('; ') || `${straps.map((x) => x.spec.samples.length).join(' e ')} amostras`);
+
+  dresser.setItemOptions('top', { padding: 1 });
+  const bodice = dresser.entries.get('top').parts.find((p) => p.kind === 'shell').spec;
+  const bib = apron.parts.find((p) => p.kind === 'shell' && p.spec.name === 'apron.bib').spec;
+  let worstLift = Infinity;
+  let overlap = 0;
+  for (let v = 0; v < ctx.N; v++) {
+    if (bodice.field(v, ctx) > 0.002 || bib.field(v, ctx) > 0) continue;
+    overlap++;
+    worstLift = Math.min(worstLift, bib.offsetFn(v, ctx) - bodice.offsetFn(v, ctx));
+  }
+  check('avental: peitilho passa por cima do corpete com enchimento máximo (≥ 1 mm de folga em todo o vértice comum)', overlap > 200 && worstLift >= 0.001 - 1e-9, `${overlap} vértices, folga mínima ${(worstLift * 1000).toFixed(2)} mm`);
+  dresser.setItemOptions('top', { padding: 0.3 });
+
+  // painel x saia: raio do painel menos raio da saia, na malha de render (o que se vê), 4 s parado
+  const renderRadius = (sk, th, y) => {
+    const { fu, fv, pos, subU, cols, seamOffset } = sk;
+    const nc = fu - 1;
+    let ax = 0, az = 0;
+    for (let i = 0; i < nc; i++) { ax += pos[i * 3]; az += pos[i * 3 + 2]; }
+    ax /= nc; az /= nc;
+    let f = (((th / (Math.PI * 2)) % 1) + 1) % 1 * cols * subU - seamOffset * subU;
+    f = ((f % (cols * subU)) + cols * subU) % (cols * subU);
+    const i0 = Math.floor(f) % nc, i1 = (i0 + 1) % nc, u = f - Math.floor(f);
+    const col = (i) => {
+      let j = 0;
+      while (j < fv - 2 && pos[((j + 1) * fu + i) * 3 + 1] > y) j++;
+      const y0 = pos[(j * fu + i) * 3 + 1], y1 = pos[((j + 1) * fu + i) * 3 + 1];
+      const t = y0 === y1 ? 0 : Math.min(1, Math.max(0, (y0 - y) / (y0 - y1)));
+      const r0 = Math.hypot(pos[(j * fu + i) * 3] - ax, pos[(j * fu + i) * 3 + 2] - az);
+      const r1 = Math.hypot(pos[((j + 1) * fu + i) * 3] - ax, pos[((j + 1) * fu + i) * 3 + 2] - az);
+      return r0 * (1 - t) + r1 * t;
+    };
+    return { r: col(i0) * (1 - u) + col(i1) * u, ax, az };
+  };
+  const apronStates = { ...BODY_STATES, exagerado: { traits: { 'thighs.contact': 1 }, dials: { bustSize: 2.1, glutesSize: 2, hipSize: 1.2, curves: 1.2, anime: 0.9, thickness: 1.2 } } };
+  for (const [sname, st] of Object.entries(apronStates)) {
+    body.setState({ ...Object.fromEntries(Object.keys(body.values).map((k) => [k, body.values[k]])), ...st.traits }, { ...neutralDials(), ...st.dials });
+    dresser.applyOutfit('maid');
+    animator.setMotion('none');
+    for (let f = 0; f < 240; f++) {
+      animator.update(1 / 60);
+      colliders.update();
+      dresser.update(1 / 60);
+    }
+    const sk = dresser.entries.get('skirt').parts.find((p) => p.kind === 'drape').cloth;
+    const ap = dresser.entries.get('apron').parts.find((p) => p.kind === 'drape').cloth;
+    let worst = Infinity;
+    let worstAt = '';
+    for (let j = 1; j < ap.fv; j++) {
+      for (let i = 0; i < ap.fu; i++) {
+        const k = (j * ap.fu + i) * 3;
+        const sr = renderRadius(sk, 0, ap.pos[k + 1]);
+        const dx = ap.pos[k] - sr.ax, dz = ap.pos[k + 2] - sr.az;
+        const th = Math.atan2(dx, dz);
+        const rs = renderRadius(sk, th, ap.pos[k + 1]).r;
+        const gapHere = Math.hypot(dx, dz) - rs;
+        if (gapHere < worst) { worst = gapHere; worstAt = `j=${j} i=${i} y=${ap.pos[k + 1].toFixed(3)} th=${(th * 57.3).toFixed(0)}°`; }
+      }
+    }
+    // dobras: vértices de render cuja normal destoa muito da do vizinho (o tecido se dobraria sobre si)
+    let folds = 0;
+    for (let j = 1; j < ap.fv - 1; j++) {
+      for (let i = 1; i < ap.fu - 1; i++) {
+        const k = (j * ap.fu + i) * 3;
+        for (const o of [k + 3, k + ap.fu * 3]) {
+          if (ap.nrm[k] * ap.nrm[o] + ap.nrm[k + 1] * ap.nrm[o + 1] + ap.nrm[k + 2] * ap.nrm[o + 2] < 0.8) folds++;
+        }
+      }
+    }
+    check(`avental (${sname}): painel sem dobras agudas`, folds === 0, `${folds} vértices`);
+    check(`avental (${sname}): painel por fora da saia na malha de render`, worst > 0.003, `folga mínima ${(worst * 1000).toFixed(1)} mm (${worstAt})`);
+  }
+  body.setState({}, neutralDials());
+}
+
 const fail = results.filter((r) => !r.ok).length;
 console.log(`\n${results.length - fail}/${results.length} verificações ok`);
 process.exit(fail ? 1 : 0);

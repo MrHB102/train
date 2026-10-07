@@ -2,8 +2,9 @@
 // quando ele muda (sem reiniciar a simulação) e colidem com cápsulas das pernas, quadril e glúteos.
 import * as THREE from 'three';
 import { Cloth } from '../physics/cloth.js';
-import { createSkirtCloth, refitSkirt, buildSkirtRest } from './drapes/skirt.js';
+import { createSkirtCloth, refitSkirt, buildSkirtRest, SkirtSurface } from './drapes/skirt.js';
 import { smoothstep, excludeLimbs } from './fields.js';
+import { shoulderStrapPath } from './ribbon.js';
 
 const clamp01 = (x) => Math.min(1, Math.max(0, x));
 
@@ -50,6 +51,7 @@ export function skirt(ctx, o, { dresser, entry }) {
         id: 'skirt',
         object: { dispose() { up.off(); mesh.removeFromParent(); cloth.geometry.dispose(); } },
         update: (dt) => up.update(dt),
+        cloth,
       },
     ],
   };
@@ -84,8 +86,9 @@ export function apron(ctx, o, { dresser, entry }) {
   const rows = 9;
   const cols = 13;
   const buildRest = () => {
-    const full = buildSkirtRest(body, ctx, { ...skParams, rows: 13, cols: 64 });
-    const radius = skirtRadius(full.rest, 13, 64, full.axis, skParams.length);
+    // mesma grade da saia (sem pregas): o painel nasce sempre por fora dela, sem diferença de resolução
+    const full = buildSkirtRest(body, ctx, skParams);
+    const radius = skirtRadius(full.rest, full.rows, full.cols, full.axis, skParams.length);
     const rest = new Float32Array(rows * cols * 3);
     for (let r = 0; r < rows; r++) {
       const t = r / (rows - 1);
@@ -119,21 +122,49 @@ export function apron(ctx, o, { dresser, entry }) {
     uv: (fr, fc) => [(fc / (cols - 1) - 0.5) * widthM, (fr / (rows - 1)) * len],
   });
   cloth.userStiffness = 1;
+  // o painel nunca entra na saia (simulada à parte): empurra as partículas para fora da superfície dela
+  const surface = new SkirtSurface();
+  const gap = 0.009;
+  cloth.layer = (c) => {
+    const sk = dresser.entries.get('skirt')?.parts.find((p) => p.kind === 'drape')?.cloth;
+    if (!sk) return;
+    if (surface.stamp !== c.time) {
+      surface.read(sk);
+      surface.stamp = c.time;
+    }
+    const { x, w, n } = c;
+    for (let i = 0; i < n; i++) {
+      if (w[i] === 0) continue;
+      const o = i * 3;
+      const dx = x[o] - surface.ax;
+      const dz = x[o + 2] - surface.az;
+      const rho = Math.hypot(dx, dz) || 1e-9;
+      const need = surface.radiusAt(Math.atan2(dx, dz), x[o + 1]) + gap;
+      if (rho < need) {
+        const k = (need - rho) / rho;
+        x[o] += dx * k;
+        x[o + 2] += dz * k;
+      }
+    }
+  };
   const mesh = drapeMesh(cloth, entry.mat, body);
   const up = makeUpdater(cloth, body, dresser, () => cloth.retarget(buildRest().rest));
   const out = {
-    drapes: [{ id: 'apron.panel', object: { dispose() { up.off(); mesh.removeFromParent(); cloth.geometry.dispose(); } }, update: (dt) => up.update(dt) }],
+    drapes: [{ id: 'apron.panel', object: { dispose() { up.off(); mesh.removeFromParent(); cloth.geometry.dispose(); } }, update: (dt) => up.update(dt), cloth }],
     shells: [],
+    ribbons: [],
   };
 
   // cós na cintura (+ peitilho com alças) recortados da superfície, por cima da saia/corpete
   const { L, pos } = ctx;
   const yc = base.yW;
   const limbs = excludeLimbs(ctx, { thresh: 0.4 });
+  // 5,2 mm, ou 1,4 mm acima da peça que estiver por baixo (corpete com enchimento no busto)
+  const lift = (v) => Math.max(0.0052, dresser.underOffset(4, v) + 0.0014);
   const band = {
     name: 'apron.band',
     layer: 4,
-    offsetFn: () => 0.0052,
+    offsetFn: lift,
     edge: () => 1, // sem acabamento nas bordas do cós (o recorte ondulado é só na barra do painel)
     field: (v) => Math.max(Math.abs(pos[v * 3 + 1] - yc) - 0.0165, limbs(v)),
     uv: (v) => [Math.atan2(pos[v * 3], pos[v * 3 + 2]) * 0.16, pos[v * 3 + 1]],
@@ -144,22 +175,36 @@ export function apron(ctx, o, { dresser, entry }) {
   if (o.bib) {
     const yLo = yc + 0.01;
     const yHi = L.y.bust + 0.085;
-    const yStrapTop = L.y.neckBase - 0.012;
     const halfW = (y) => 0.088 + 0.03 * smoothstep(yLo, L.y.underbust, y) - 0.028 * smoothstep(L.y.bust, yHi, y);
     out.shells.push({
       name: 'apron.bib',
       layer: 4,
-      offsetFn: () => 0.0052,
+      offsetFn: lift,
       edge: () => 1,
       field: (v) => {
         const x = Math.abs(pos[v * 3]), y = pos[v * 3 + 1], z = pos[v * 3 + 2];
-        const bib = Math.max(yLo - y, y - yHi, x - halfW(y), 0.03 - z);
-        const strap = Math.max(Math.abs(x - 0.0565) - 0.0115, yc - y, y - yStrapTop, limbs(v));
-        return Math.min(bib, strap);
+        return Math.max(yLo - y, y - yHi, x - halfW(y), 0.03 - z);
       },
       uv: (v) => [pos[v * 3], pos[v * 3 + 1]],
       castShadow: true,
     });
+    // alças: fitas planas pela frente, sobre o ombro e pelas costas até o cós (bordas retas, sem serrilhado);
+    // 0,8 mm acima do peitilho onde se sobrepõem (sem z-fighting)
+    const nearest = (smp) => smp.verts[smp.bary.indexOf(Math.max(...smp.bary))];
+    for (const s of [1, -1]) {
+      const samples = shoulderStrapPath(ctx, { x: s * 0.066, yFront: yHi - 0.03, yBack: yc });
+      if (samples.length > 4) {
+        out.ribbons.push({
+          name: `apron.strap${s > 0 ? 'L' : 'R'}`,
+          samples,
+          closed: false,
+          width: 0.022,
+          profile: 'flat',
+          offset: (i) => lift(nearest(samples[i])) + 0.0008,
+          layer: 4,
+        });
+      }
+    }
   }
   return out;
 }

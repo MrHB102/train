@@ -82,6 +82,31 @@ export class Dresser {
     };
   }
 
+  /**
+   * Espessura (m) da peça opaca mais alta que está por baixo de `layer` no vértice v. Uma peça de camada
+   * superior (avental sobre o corpete, por exemplo) passa por cima dela em qualquer enchimento do busto;
+   * sem isso o corpete aparece à frente do avental e o limite entre os dois vira uma escada de triângulos.
+   */
+  underOffset(layer, v) {
+    let m = 0;
+    for (const e of this.entries.values()) {
+      for (const p of e.parts) {
+        const sp = p.spec;
+        if (p.kind !== 'shell' || sp.opaque === false || !sp.offsetFn || !((sp.layer ?? 3) < layer)) continue;
+        if (sp.field(v, this.ctx) > 0.002) continue;
+        m = Math.max(m, sp.offsetFn(v, this.ctx));
+      }
+    }
+    return m;
+  }
+
+  /** Reavalia a espessura das peças de camada alta (dependem do que está por baixo delas). */
+  _relayer() {
+    for (const e of this.entries.values()) {
+      for (const p of e.parts) if ((p.kind === 'shell' || p.kind === 'ribbon') && (p.spec.layer ?? 3) >= 4) p.obj.refresh?.();
+    }
+  }
+
   _build(entry) {
     this._clearParts(entry);
     const def = BUILDERS[entry.type];
@@ -112,7 +137,7 @@ export class Dresser {
     for (const o of res.objects || []) {
       entry.parts.push({ kind: 'object', id: o.id, obj: o.object, update: o.update, dispose: o.dispose });
     }
-    for (const d of res.drapes || []) entry.parts.push({ kind: 'drape', id: d.id, obj: d.object, update: d.update, dispose: d.dispose });
+    for (const d of res.drapes || []) entry.parts.push({ kind: 'drape', id: d.id, obj: d.object, update: d.update, dispose: d.dispose, cloth: d.cloth });
     this.wardrobe.updateCoverage();
     // peças que dependem de outras (laço ↔ gola, avental ↔ saia) acompanham quando a de que dependem muda
     if (!this._cascade) {
@@ -188,6 +213,7 @@ export class Dresser {
     this._build(this.base.top);
     this._build(this.base.bottom);
     this._guardBase();
+    this._relayer();
   }
 
   /**
