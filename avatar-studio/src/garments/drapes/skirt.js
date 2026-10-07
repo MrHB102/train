@@ -143,7 +143,39 @@ export class SkirtSurface {
 }
 
 export function createSkirtCloth(body, ctx, params) {
-  const rest = buildSkirtRest(body, ctx, params);
+  const rest = buildSkirtRest(body, ctx, { ...params, pleats: 0 }); // as pregas ficam só na malha de render
+  // raio médio de cada anel de repouso, interpolado entre linhas
+  const meanR = [];
+  for (let r = 0; r < rest.rows; r++) {
+    let sum = 0;
+    for (let c = 0; c < rest.cols; c++) {
+      const k = (r * rest.cols + c) * 3;
+      sum += Math.hypot(rest.rest[k] - rest.axis.x, rest.rest[k + 2] - rest.axis.z);
+    }
+    meanR.push(sum / rest.cols);
+  }
+  const ringR = (fr) => {
+    const r0 = Math.min(rest.rows - 2, Math.floor(fr));
+    const t = fr - r0;
+    return meanR[r0] * (1 - t) + meanR[r0 + 1] * t;
+  };
+  // distância ao longo do tecido (da cintura para baixo), média das colunas: a saia rodada é inclinada, então a
+  // altura subestimaria o comprimento e as bolinhas ficariam compridas
+  const slant = [0];
+  for (let r = 1; r < rest.rows; r++) {
+    let sum = 0;
+    for (let c = 0; c < rest.cols; c++) {
+      const a = ((r - 1) * rest.cols + c) * 3;
+      const b = (r * rest.cols + c) * 3;
+      sum += Math.hypot(rest.rest[b] - rest.rest[a], rest.rest[b + 1] - rest.rest[a + 1], rest.rest[b + 2] - rest.rest[a + 2]);
+    }
+    slant.push(slant[r - 1] + sum / rest.cols);
+  }
+  const slantAt = (fr) => {
+    const r0 = Math.min(rest.rows - 2, Math.floor(fr));
+    const t = fr - r0;
+    return slant[r0] * (1 - t) + slant[r0 + 1] * t;
+  };
   const attach = body.rig.index.get('root');
   const cloth = new Cloth(body, {
     rows: rest.rows,
@@ -153,11 +185,14 @@ export function createSkirtCloth(body, ctx, params) {
     attach,
     pinRows: 1,
     shape: [params.shapeTop ?? 0.5, params.shapeHem ?? 0.035],
-    subU: params.pleats > 0 ? 4 : 3,
+    subU: params.pleats > 0 ? 6 : 3,
+    pleats: params.pleats > 0 ? { count: params.pleats, amp: 0.026, power: 1.1 } : null,
     subV: 3,
     hemLength: rest.length,
     seamOffset: Math.floor(rest.cols / 2), // a emenda do padrão fica nas costas
-    uv: (fr, fc) => [(fc / rest.cols) * rest.circ, (fr / (rest.rows - 1)) * rest.length],
+    // padrão em metros SOBRE o tecido: u = arco no raio da própria linha (com 0 na frente), então bolinhas e
+    // xadrez têm o mesmo tamanho na cintura e na barra (com u fixo elas se espremiam na cintura e esticavam na barra)
+    uv: (fr, fc) => [(((fc + Math.floor(rest.cols / 2)) / rest.cols) * 2 * Math.PI - 2 * Math.PI) * ringR(fr), slantAt(fr)],
   });
   cloth.meta = rest;
   cloth.params = params;
@@ -166,7 +201,7 @@ export function createSkirtCloth(body, ctx, params) {
 
 /** Reajusta a saia ao corpo atual (após morph): recalcula o formato de repouso e recomeça a simulação. */
 export function refitSkirt(cloth, body, ctx, { soft = true } = {}) {
-  const rest = buildSkirtRest(body, ctx, cloth.params);
+  const rest = buildSkirtRest(body, ctx, { ...cloth.params, pleats: 0 });
   cloth.meta = rest;
   if (soft) cloth.retarget(rest.rest);
   else cloth.setRest(rest.rest);

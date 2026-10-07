@@ -12,7 +12,8 @@ export class Cloth {
   /**
    * opts: { rows, cols, wrap, rest (Float32Array rows*cols*3, espaço do grupo), attach (índice do osso),
    *         pinRows (n de linhas fixas no topo), shape: [kTopo, kBarra], gravity, damping, subU, subV,
-   *         hemLength (m), uv: (r,c)=>[u,v] }
+   *         hemLength (m), uv: (r,c)=>[u,v],
+   *         pleats: { count, amp (m, na barra), power } — pregas só na malha de render (anel fechado) }
    */
   constructor(body, opts) {
     this.body = body;
@@ -33,6 +34,7 @@ export class Cloth {
     this.gravity = opts.gravity ?? 9.8;
     this.damping = opts.damping ?? 0.985;
     this.wind = 0;
+    this.pleat = opts.pleats || null;
     this.layer = null; // restrição extra (cloth) => void, aplicada após as colisões: ex.: ficar por cima de outro tecido
     this.stiffness = 1; // multiplicador do shape matching
     this.iterations = opts.iterations ?? 5;
@@ -291,6 +293,44 @@ export class Cloth {
     }
   }
 
+  /**
+   * Pregas: desloca a malha de render na horizontal, para dentro e para fora do eixo da peça, com fase fixa por
+   * coluna (as dobras ficam presas ao tecido) e profundidade crescente da cintura à barra. A simulação continua
+   * lisa: 26 pregas não cabem numa grade de 32 colunas.
+   */
+  _pleat() {
+    const { fu, fv, subU, cols, seamOffset, x, pos: P } = this;
+    const { count, amp, power = 1.1 } = this.pleat;
+    let ax = 0;
+    let az = 0;
+    for (let c = 0; c < cols; c++) {
+      ax += x[c * 3];
+      az += x[c * 3 + 2];
+    }
+    ax /= cols;
+    az /= cols;
+    const nc = fu - 1;
+    const prof = new Float32Array(nc);
+    for (let i = 0; i < nc; i++) {
+      const ph = (((i / subU + seamOffset) / cols) * count) % 1;
+      const tri = Math.abs(2 * ph - 1);
+      prof[i] = 2 * (tri * tri * (3 - 2 * tri)) - 1;
+    }
+    for (let j = 0; j < fv; j++) {
+      const a = amp * Math.pow(j / (fv - 1), power) * 0.5;
+      if (a === 0) continue;
+      for (let i = 0; i < fu; i++) {
+        const k = (j * fu + i) * 3;
+        const dx = P[k] - ax;
+        const dz = P[k + 2] - az;
+        const l = Math.hypot(dx, dz) || 1;
+        const d = a * prof[i % nc];
+        P[k] += (dx / l) * d;
+        P[k + 2] += (dz / l) * d;
+      }
+    }
+  }
+
   /** Interpola a grade de simulação (Catmull-Rom) para a malha fina e recalcula normais. */
   updateRender() {
     const { fu, fv, subU, subV, x } = this;
@@ -329,6 +369,7 @@ export class Cloth {
         P[k] = px; P[k + 1] = py; P[k + 2] = pz;
       }
     }
+    if (this.pleat && this.wrap) this._pleat();
     // normais
     const N = this.nrm;
     N.fill(0);

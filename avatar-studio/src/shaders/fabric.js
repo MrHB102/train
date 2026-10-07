@@ -90,10 +90,18 @@ float fabKnit = 0.0;
   fabCol = mix(fabCol, uFabColor2, 1.0 - smoothstep(0.0034, 0.0041, pd));
 #endif
 #ifdef PAT_PLAID
-  float bx = 1.0 - smoothstep(0.0, 0.0035, abs(fract(fuv.x / 0.05) - 0.5) * 0.05 - 0.0125);
-  float by = 1.0 - smoothstep(0.0, 0.0035, abs(fract(fuv.y / 0.05) - 0.5) * 0.05 - 0.0125);
-  fabCol = mix(fabCol, uFabColor2, max(bx, by) * 0.55);
-  fabCol *= 1.0 - 0.45 * bx * by;
+  // tartan: em cada sentido, uma faixa larga (escurece a cor base) e dois fios finos claros; onde as faixas se cruzam
+  // fica mais escuro, e o fio de trama/urdidura (twill) dá o brilho de tecido de verdade
+  vec2 tp = fract(fuv / 0.056);
+  vec2 aaP = max(fwidth(fuv) / 0.056, vec2(0.006));
+  vec2 wideB = 1.0 - smoothstep(0.17 - aaP, 0.17 + aaP, abs(tp - 0.5));
+  vec2 thinB = max(1.0 - smoothstep(0.011 - aaP * 0.5, 0.011 + aaP * 0.5, abs(tp - 0.2)), 1.0 - smoothstep(0.011 - aaP * 0.5, 0.011 + aaP * 0.5, abs(tp - 0.8)));
+  float wideAny = max(wideB.x, wideB.y);
+  fabCol = mix(fabCol, fabCol * vec3(0.52, 0.56, 0.7), wideAny);
+  fabCol *= 1.0 - 0.28 * wideB.x * wideB.y;
+  fabCol = mix(fabCol, uFabColor2, max(thinB.x, thinB.y) * 0.72);
+  float twl = sin((fuv.x + fuv.y) * 6.2832 / 0.0024) * (1.0 - smoothstep(0.15, 0.42, max(fwidth(fuv.x), fwidth(fuv.y)) / 0.0024));
+  fabCol *= 0.95 + 0.05 * twl;
 #endif
 #ifdef BUMP_RIB
   float lodRib = fabLod(fuv, 0.0036);

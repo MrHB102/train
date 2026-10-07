@@ -4,7 +4,7 @@
 // anexa o material. Camadas: base 1 · meias 2 · peças 3 · por cima 4 · acessórios 5.
 // Espessuras (m): base 1.6 mm · meias 2.2 mm · peças 3.6 mm · por cima 4.8 mm.
 import { FABRICS } from '../shaders/fabric.js';
-import { smoothstep, mix, excludeLimbs, excludeArms, highLegCut, neckBand, legAxial } from './fields.js';
+import { smoothstep, mix, excludeLimbs, excludeArms, highLegCut, neckBand, legAxial, torsoUv } from './fields.js';
 import { baseTop, baseBottom } from './recipes/base.js';
 import { skirt, apron } from './drapes.js';
 import { NeckBow, BunnyTail } from './objects.js';
@@ -68,8 +68,7 @@ function leotard(ctx, o, { style }) {
     opaque: !seeThrough(style),
     offsetFn: (v) => 0.0036 + 0.011 * pad * smoothstep(0.03, 0.4, mask.breast[v]) + 0.004 * crotchZone(ctx)(v),
     field: (v) => Math.max(pos[v * 3 + 1] - top(pos[v * 3], pos[v * 3 + 2]), limbs(v), leg(v)),
-    uv: cylUv(ctx),
-    uvPeriod: TAU * 0.16,
+    uv: torsoUv(ctx),
     castShadow: true,
   };
   return { shells: [shell] };
@@ -93,8 +92,7 @@ function bodice(ctx, o, { style }) {
       const upper = top ? y - top(x, z) : y - neckHi + 0.03 * (1 - smoothstep(0, 0.07, Math.abs(x))) * smoothstep(-0.02, 0.06, z);
       return Math.max(yBot - y, upper, arms(v));
     },
-    uv: cylUv(ctx),
-    uvPeriod: TAU * 0.16,
+    uv: torsoUv(ctx),
     castShadow: true,
   };
   return { shells: [shell] };
@@ -115,8 +113,7 @@ function cropTee(ctx, o, { style }) {
       const scoop = 0.05 * (1 - smoothstep(0, 0.09, Math.abs(x))) * smoothstep(-0.02, 0.06, z) * (1 - o.neck * 0.6);
       return Math.max(yBot - y, y - yTop + scoop, arms(v));
     },
-    uv: cylUv(ctx),
-    uvPeriod: TAU * 0.16,
+    uv: torsoUv(ctx),
     castShadow: true,
   };
   return { shells: [shell] };
@@ -126,6 +123,8 @@ function tubeTop(ctx, o, { style }) {
   const res = baseTop(ctx, { style: 'bandeau', padding: o.padding });
   const shell = { ...res.shell, name: 'tubeTop', layer: 3, opaque: !seeThrough(style), castShadow: true };
   const mask = ctx.mask;
+  shell.uv = torsoUv(ctx);
+  delete shell.uvPeriod;
   shell.offsetFn = (v) => 0.0036 + 0.011 * o.padding * smoothstep(0.03, 0.4, mask.breast[v]);
   return { shells: [shell] };
 }

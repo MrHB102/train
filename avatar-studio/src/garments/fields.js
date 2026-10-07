@@ -1,5 +1,6 @@
 // Campos de corte reutilizáveis para Shells: cada função devolve field(v) -> metros (<= 0 dentro da peça).
 // Combine com max (interseção) e min (união). Tudo no espaço de referência (mulher padrão), y para cima.
+import { getSurface } from './ribbon.js';
 export const clamp01 = (x) => Math.min(1, Math.max(0, x));
 export const smoothstep = (a, b, x) => {
   const t = clamp01((x - a) / (b - a));
@@ -121,4 +122,108 @@ export function legAxial(ctx) {
   ctx._legU = out;
   ctx._legLen = { shin: seg.L.lshin, thigh: seg.L.lthigh };
   return out;
+}
+
+const RING_BINS = 96;
+
+/**
+ * Anéis horizontais do tronco na malha de referência: para cada altura (a cada 1 cm, da virilha à base do pescoço), o
+ * arco (m) com sinal a partir da linha central da frente, medido SOBRE a superfície (raios saindo do centro da
+ * seção), e a circunferência. É o que dá a um padrão (bolinhas, xadrez) a mesma escala no busto e na cintura.
+ */
+export function torsoRings(ctx) {
+  if (ctx._torsoRings) return ctx._torsoRings;
+  const S = getSurface(ctx);
+  const { L } = ctx;
+  const y0 = L.y.crotch + 0.01;
+  const dy = 0.01;
+  const n = Math.ceil((L.y.neckBase + 0.02 - y0) / dy) + 1;
+  const C = RING_BINS;
+  const zc = new Float32Array(n);
+  const circ = new Float32Array(n);
+  const arc = new Float32Array(n * (C + 1));
+  const R = new Float32Array(C + 1);
+  let have = false;
+  for (let k = 0; k < n; k++) {
+    const y = y0 + k * dy;
+    const f = S.cast([0, y, 0.8], [0, 0, -1], 1.6);
+    const b = S.cast([0, y, -0.8], [0, 0, 1], 1.6);
+    let valid = !!(f && b);
+    if (valid) {
+      const z0 = (f.point[2] + b.point[2]) / 2;
+      let ok = 0;
+      for (let c = 0; c <= C; c++) {
+        const th = -Math.PI + (c * 2 * Math.PI) / C;
+        const h = c === C ? null : S.cast([0, y, z0], [Math.sin(th), 0, Math.cos(th)], 0.5);
+        R[c] = h ? Math.hypot(h.point[0], h.point[2] - z0) : NaN;
+        if (h) ok++;
+      }
+      R[C] = R[0];
+      valid = ok > C * 0.6;
+      if (valid) {
+        // buracos (raio que sai pelo corte de um braço): interpola entre os vizinhos válidos
+        for (let c = 0; c <= C; c++) {
+          if (!Number.isNaN(R[c])) continue;
+          let a = c, bb = c;
+          while (Number.isNaN(R[(a + C) % C]) && c - a < C) a--;
+          while (Number.isNaN(R[bb % C]) && bb - c < C) bb++;
+          const ra = R[(a + C) % C], rb = R[bb % C];
+          R[c] = bb === a ? ra : ra + ((rb - ra) * (c - a)) / (bb - a);
+        }
+        zc[k] = z0;
+      }
+    }
+    if (!valid) {
+      // anel sem seção (acima/abaixo do tronco): repete o anterior, ou um círculo de 14 cm
+      if (have) {
+        zc[k] = zc[k - 1];
+        circ[k] = circ[k - 1];
+        arc.copyWithin(k * (C + 1), (k - 1) * (C + 1), k * (C + 1));
+      } else {
+        zc[k] = 0;
+        for (let c = 0; c <= C; c++) R[c] = 0.14;
+        valid = true;
+      }
+      if (have) continue;
+    }
+    have = true;
+    let s = 0;
+    const cum = new Float32Array(C + 1);
+    let px = R[0] * Math.sin(-Math.PI), pz = R[0] * Math.cos(-Math.PI);
+    for (let c = 1; c <= C; c++) {
+      const th = -Math.PI + (c * 2 * Math.PI) / C;
+      const qx = R[c] * Math.sin(th), qz = R[c] * Math.cos(th);
+      s += Math.hypot(qx - px, qz - pz);
+      cum[c] = s;
+      px = qx;
+      pz = qz;
+    }
+    circ[k] = s;
+    for (let c = 0; c <= C; c++) arc[k * (C + 1) + c] = cum[c] - cum[C / 2];
+  }
+  return (ctx._torsoRings = { y0, dy, n, C, zc, circ, arc });
+}
+
+/**
+ * Coordenadas de padrão do tronco: [u, v, período]. u = arco sobre a superfície a partir da linha central da frente
+ * (o padrão não estica no busto), v = altura; a emenda fica nas costas, com período = circunferência naquela altura.
+ */
+export function torsoUv(ctx) {
+  const r = torsoRings(ctx);
+  const { pos } = ctx;
+  const { C } = r;
+  return (v) => {
+    const x = pos[v * 3], y = pos[v * 3 + 1], z = pos[v * 3 + 2];
+    const f = clamp01((y - r.y0) / (r.dy * (r.n - 1))) * (r.n - 1);
+    const k0 = Math.min(r.n - 2, Math.floor(f));
+    const t = f - k0;
+    const at = (k) => {
+      const th = Math.atan2(x, z - r.zc[k]);
+      const fc = ((th + Math.PI) / (2 * Math.PI)) * C;
+      const c0 = Math.min(C - 1, Math.floor(fc));
+      const w = fc - c0;
+      return r.arc[k * (C + 1) + c0] * (1 - w) + r.arc[k * (C + 1) + c0 + 1] * w;
+    };
+    return [at(k0) * (1 - t) + at(k0 + 1) * t, y, r.circ[k0] * (1 - t) + r.circ[k0 + 1] * t];
+  };
 }

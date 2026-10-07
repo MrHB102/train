@@ -30,15 +30,16 @@ export class Shell {
     this.srcTri = res.srcTri; // triângulo do corpo que originou cada triângulo do Shell
 
     // coordenadas de padrão: do vértice mais próximo; se o padrão é periódico (cilindro), divide os
-    // triângulos que atravessam a costura duplicando vértices com u deslocado de um período
+    // triângulos que atravessam a costura duplicando vértices com u deslocado de um período. O período é
+    // spec.uvPeriod (m, fixo) ou o terceiro valor de uv(v) = [u, v, período] (circunferência na altura do vértice)
     let uvList = verts.map((vt) => (spec.uv ? spec.uv(vt.t < 0.5 ? vt.a : vt.b, ctx) : [0, 0]));
-    if (spec.uv && spec.uvPeriod) {
-      const P = spec.uvPeriod;
+    if (spec.uv && (spec.uvPeriod || (uvList.length && uvList[0].length > 2))) {
       const copies = new Map();
       const nv = [...verts];
       const nu = [...uvList];
       for (let t = 0; t < tris.length; t += 3) {
         const u0 = uvList[tris[t]][0];
+        const P = uvList[tris[t]][2] ?? spec.uvPeriod;
         for (let k = 1; k < 3; k++) {
           const id = tris[t + k];
           const du = uvList[id][0] - u0;
