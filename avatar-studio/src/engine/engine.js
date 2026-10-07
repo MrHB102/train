@@ -2,6 +2,10 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { buildStudioEnvironment, gradientBackground } from './environment.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 export function createEngine(container) {
   const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance', preserveDrawingBuffer: false });
@@ -78,6 +82,32 @@ export function createEngine(container) {
   floor.receiveShadow = true;
   scene.add(floor);
 
+  // pós-processamento (qualidade Alta): oclusão de ambiente GTAO + antialiasing MSAA em alvo de ponto flutuante
+  let composer = null;
+  let gtao = null;
+  let postOn = false;
+  function buildPost() {
+    const size = renderer.getDrawingBufferSize(new THREE.Vector2());
+    const rt = new THREE.WebGLRenderTarget(size.x, size.y, { type: THREE.HalfFloatType, samples: 4 });
+    composer = new EffectComposer(renderer, rt);
+    composer.addPass(new RenderPass(scene, camera));
+    gtao = new GTAOPass(scene, camera, size.x, size.y);
+    gtao.output = GTAOPass.OUTPUT.Default;
+    gtao.blendIntensity = 0.9;
+    gtao.updateGtaoMaterial({ radius: 0.22, distanceExponent: 1.4, thickness: 1.2, scale: 1.1, samples: 12, distanceFallOff: 1.0, screenSpaceRadius: false });
+    gtao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 5, rings: 2, samples: 12 });
+    composer.addPass(gtao);
+    composer.addPass(new OutputPass());
+    composer.setPixelRatio(renderer.getPixelRatio());
+    composer.setSize(container.clientWidth || window.innerWidth, container.clientHeight || window.innerHeight);
+  }
+  function setPost(on) {
+    postOn = !!on;
+    if (postOn && !composer) buildPost();
+    // com pós-processamento o tone mapping passa a valer também para o fundo (fica mais escuro): compensa
+    scene.backgroundIntensity = postOn ? 2.3 : 1;
+  }
+
   const updaters = new Set();
   let last = performance.now();
   let running = false;
@@ -95,6 +125,10 @@ export function createEngine(container) {
     if (shift.x || shift.y) camera.setViewOffset(w, h, shift.x, shift.y, w, h);
     else camera.clearViewOffset();
     camera.updateProjectionMatrix();
+    if (composer) {
+      composer.setPixelRatio(renderer.getPixelRatio());
+      composer.setSize(w, h);
+    }
   }
   new ResizeObserver(resize).observe(container);
   window.addEventListener('resize', resize);
@@ -107,7 +141,11 @@ export function createEngine(container) {
     if (state.autoRotate) stage.rotation.y += dt * state.rotateSpeed;
     controls.update();
     for (const fn of updaters) fn(dt, state.time);
-    renderer.render(scene, camera);
+    draw();
+  }
+  function draw() {
+    if (postOn && composer) composer.render();
+    else renderer.render(scene, camera);
   }
 
   /** Qualidade gráfica: 'low' (sem sombras, resolução 1×), 'medium', 'high'. */
@@ -126,6 +164,7 @@ export function createEngine(container) {
       key.shadow.map?.dispose();
       key.shadow.map = null;
     }
+    setPost(q === 'high');
     resize();
   }
 
@@ -152,7 +191,7 @@ export function createEngine(container) {
         for (const fn of updaters) fn(dt, state.time);
       }
       controls.update();
-      renderer.render(scene, camera);
+      draw();
     },
     resize,
     /** Desloca a imagem (px): x > 0 move o corpo para a esquerda, y > 0 para cima. */
